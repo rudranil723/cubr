@@ -4,8 +4,9 @@ var cubr = function() {
     var keys;
 
     var settings = {
-        timerInterval: 30,
-        rotateSpeed: Math.PI / 30,
+        timerInterval: 20,
+        rotateSpeed: Math.PI / 45,
+        speed: 12,
     };
 
     var resetKeys = function() {
@@ -16,7 +17,7 @@ var cubr = function() {
     };
 
     var timerFired = function() {
-        cube.update(keys, settings);
+        cube.update(keys);
         scene.draw();
     };
 
@@ -62,7 +63,7 @@ var cubr = function() {
 
     var run = function() {
         scene = SimpleScene("glcanvas");
-        cube = RubiksCube(scene);
+        cube = RubiksCube(scene, settings);
         cube.setVersion("3x3x3");
         cube.setState("solved");
         bindEventListeners();

@@ -16,13 +16,12 @@ COLORS; /* From cubelets.js */
  * front, back, top, bottom, right, left
  *
  */
-var RubiksCube = function(s) {
+var RubiksCube = function(sce, set) {
     var cubelets;
     var scene;
     var moveQueue;
-    var moving;
     var moves;
-    var moveFrame;
+    var settings;
     var moveFrameStart;
     var currentMove;
     var setVersion = function(versionID) {
@@ -67,29 +66,21 @@ var RubiksCube = function(s) {
     };
 
     var makeMove = function(move) {
-        cubelets.makeMove(move);
+        return cubelets.makeMove(move, settings.speed);
     };
 
     var cycleMoves = function() {
-        if (moving) {
-            moving = (moveFrame!=0);
-            moveFrame--;
-        }
-        if (!moving && (moveQueue.length > 0)) {
-            currentMove = moveQueue.shift();
-            makeMove(currentMove);
-            moveFrame = moveFrameStart;
-            moving = true;
+        if (moveQueue.length > 0) {
+            if (makeMove(moveQueue[0]))
+                moveQueue.shift();
         }
     };
 
     var applyMoves = function() {
-        if (moving) {
-            cubelets.updateRotation(moveFrame, moveFrameStart);
-        }
+        cubelets.updateRotation();
     }
 
-    var update = function(keys, settings) {
+    var update = function(keys) {
         cycleMoves();
         applyMoves();
         var r = settings.rotateSpeed;
@@ -125,59 +116,54 @@ var RubiksCube = function(s) {
 
     var initMoves = function() {
         moveQueue = [];
-        moving = false;
-        moveFrameStart = 9;
-        moveFrame = moveFrameStart;;
-        currentMove = null;
         moves = {
             front: {
                 axis: [0.0, 0.0, 1.0],
                 key: KEYCODES.f,
                 angle: -Math.PI/2,
-                applies: function(c){return feq(c.loc.pos[2], 1);}
+                applies: function(c){return feq(c.ploc.pos[2], 1);}
             },
             back: {
                 axis: [0.0, 0.0, -1.0],
                 key: KEYCODES.b,
                 angle: -Math.PI/2,
-                applies: function(c){return feq(c.loc.pos[2], -1);}
+                applies: function(c){return feq(c.ploc.pos[2], -1);}
             },
             right: {
                 axis: [1.0, 0.0, 0.0],
                 key: KEYCODES.r,
                 angle: -Math.PI/2,
-                applies: function(c){return feq(c.loc.pos[0], 1);}
+                applies: function(c){return feq(c.ploc.pos[0], 1);}
             },
             left: {
                 axis : [-1.0, 0.0, 0.0],
                 angle : -Math.PI/2,
                 key: KEYCODES.l,
-                applies : function(c){
-                    return feq(c.loc.pos[0], -1);
-                }
+                applies : function(c){return feq(c.ploc.pos[0], -1);}
             },
             up: {
                 axis : [0.0, 1.0, 0.0],
                 key: KEYCODES.u,
                 angle : -Math.PI/2,
-                applies : function(c){return feq(c.loc.pos[1], 1);}
+                applies : function(c){return feq(c.ploc.pos[1], 1);}
             },
             down: {
                 axis : [0.0, -1.0, 0.0],
                 key: KEYCODES.d,
                 angle : -Math.PI/2,
-                applies : function(c){return feq(c.loc.pos[1], -1);}
+                applies : function(c){return feq(c.ploc.pos[1], -1);}
             }
         }
     };
 
-    var init = function() {
-        scene = s;
+    var init = function(sce, set) {
+        scene = sce;
+        settings = set;
         cubelets = Cubelets();
         initMoves();
         scene.linkObjects(cubelets);
     };
-    init();
+    init(sce, set);
 
     var publicAttrs = {
         setVersion: setVersion,

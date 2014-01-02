@@ -15,6 +15,13 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
         pos: [x, y, z],
         orientation: {up: up,
                       right: right}
+    };
+    /* Permanent location (updated at the end of a move) */
+    var ploc = {
+        pos: [x, y, z],
+        orientation: {up: copyArray(up),
+                      right: copyArray(right)}
+
     }
     var buffers = {
         vertices: null,
@@ -34,12 +41,13 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
 
     var moving = {
         currently: false,
-        stage: null,
         update: null,
-        stop: null
+        stop: null,
+        frameStart: null,
+        frameCurrent: null,
     };
 
-    var rotate = function(axis, angle) {
+    var rotate = function(axis, angle, frameStart) {
         var hand = vec.without(loc.pos, axis);
         var right = vec.cross(axis, hand);
         var getPos = function(portion) {
@@ -65,10 +73,13 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
             };
         };
         // Change these two functions with orientation!
-        moving.update = function(portion) {
+        moving.update = function() {
+            var portion = (1.0 * moving.frameCurrent) / moving.frameStart;
             loc.pos = getPos(portion);
             loc.orientation = getOrientation(portion);
             resetBuffers();
+            moving.frameCurrent--;
+            return (moving.frameCurrent == -1);
         };
         moving.stop = function() {
             moving.currently = false;
@@ -78,10 +89,14 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
                 up: vec.ints(newOrientation.up),
                 right: vec.ints(newOrientation.right)
             };
+            ploc.pos = copyArray(loc.pos);
+            ploc.orientation = {up: copyArray(loc.orientation.up),
+                                right: copyArray(loc.orientation.right)};
             resetBuffers();
         }
-
         moving.currently = true;
+        moving.frameStart = frameStart;
+        moving.frameCurrent = frameStart;
     };
 
     var getVertices = function() { /* FIX THIS FUNCTION AND THE ONE BELOW IT. */
@@ -340,7 +355,8 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
         draw: draw,
         moving: moving,
         rotate: rotate,
-        loc: loc
+        loc: loc,
+        ploc: ploc
     };
     return publicAttrs;
 };
@@ -368,24 +384,29 @@ var Cubelets = function() {
         cubes.push(Cube(scene, x, y, z, len, up, right, colors));
     };
 
-    var makeMove = function(move) {
+    var makeMove = function(move, moveFrameStart) {
         for (var i = 0; i < cubes.length; i++) {
             var cube = cubes[i];
             if (move.applies(cube)) {
-                cube.rotate(move.axis, move.angle);
+                if (cube.moving.currently)
+                    return false;
             }
         }
+        for (var i = 0; i < cubes.length; i++) {
+            var cube = cubes[i];
+            if (move.applies(cube)) {
+                cube.rotate(move.axis, move.angle, moveFrameStart);
+            }
+        }
+        return true;
     };
 
-    var updateRotation = function(f, fm) {
-        var portion = (f * 1.0) / fm;
+    var updateRotation = function() {
         for (var i = 0; i < cubes.length; i++) {
             var cube = cubes[i];
             if (cube.moving.currently) {
-                cube.moving.update(portion);
-                if (f==0) {
+                if (cube.moving.update())
                     cube.moving.stop();
-                }
             }
         }
     };
