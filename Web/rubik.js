@@ -146,32 +146,34 @@ var RubiksCube = function(s) {
             front: {
                 axis: [0.0, 0.0, 1.0],
                 angle: Math.PI/2,
-                applies: function(c){return feq(c.pos[2], 1);}
+                applies: function(c){return feq(c.loc.pos[2], 1);}
             },
             back: {
                 axis: [0.0, 0.0, -1.0],
                 angle: Math.PI/2,
-                applies: function(c){return feq(c.pos[2], -1);}
+                applies: function(c){return feq(c.loc.pos[2], -1);}
             },
             right: {
                 axis: [1.0, 0.0, 0.0],
                 angle: Math.PI/2,
-                applies: function(c){return feq(c.pos[0], 1);}
+                applies: function(c){return feq(c.loc.pos[0], 1);}
             },
             left: {
                 axis : [-1.0, 0.0, 0.0],
                 angle : Math.PI/2,
-                applies : function(c){return feq(c.pos[0], -1);}
+                applies : function(c){
+                    return feq(c.loc.pos[0], -1);
+                }
             },
             up: {
                 axis : [0.0, 1.0, 0.0],
                 angle : Math.PI/2,
-                applies : function(c){return feq(c.pos[1], 1);}
+                applies : function(c){return feq(c.loc.pos[1], 1);}
             },
             down: {
                 axis : [0.0, -1.0, 0.0],
                 angle : Math.PI/2,
-                applies : function(c){return feq(c.pos[1], -1);}
+                applies : function(c){return feq(c.loc.pos[1], -1);}
             }
         }
     };

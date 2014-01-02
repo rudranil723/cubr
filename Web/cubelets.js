@@ -1,7 +1,7 @@
 var COLORS = ["white", "blue", "orange", "green",
               "red", "yellow", "pink", "#202020"];
 
-var Cube = function(sceneData, x, y, z, len, lat, lon, colors) {
+var Cube = function(sceneData, x, y, z, len, up, right, colors) {
     /* Cube is centered at (x, y, z)
      * Each edge has length `len`
      * Azimuth angle with the z axis is lat
@@ -11,7 +11,10 @@ var Cube = function(sceneData, x, y, z, len, lat, lon, colors) {
     var scene;
     var texture;
     var image;
-    var pos = [x, y, z];
+    var loc = {
+        pos: [x, y, z],
+        orientation: [up, right],
+    }
     var buffers = {
         vertices: null,
         normals: null,
@@ -24,8 +27,7 @@ var Cube = function(sceneData, x, y, z, len, lat, lon, colors) {
         y: y,
         z: z,
         len: len,
-        lat: lat,
-        lon: lon
+        orientation: copy2DArray(loc.orientation)
     };
 
     var moving = {
@@ -36,35 +38,23 @@ var Cube = function(sceneData, x, y, z, len, lat, lon, colors) {
     };
 
     var rotate = function(axis, angle) {
-        var hand = vec.without(pos, axis);
+        var hand = vec.without(loc.pos, axis);
         var right = vec.cross(axis, hand);
         var getPos = function(portion) {
-            return vec.add(vec.muls(Math.cos(angle*(1-portion)), hand),
-                           vec.muls(Math.sin(angle*(1-portion)), right));
-        }
+            return vec.add(axis,
+                           vec.add(vec.muls(Math.cos(angle*(1-portion)), hand),
+                           vec.muls(Math.sin(angle*(1-portion)), right)));
+        };
         moving.update = function(portion) {
             var newPos = getPos(portion);
-            newPos = vec.add(newPos, axis);
-            if (axis[2] != 0) // About z axis
-                lon += angle;
-            else {
-                lat += angle;
-                if (lat < -Math.PI/2) {
-                    lat -= 2*((-Math.PI/2 - lat)%(Math.PI/2));
-                    lon += Math.PI;
-                } else if (lat > Math.PI/2) {
-                    lat += 2*((Math.PI/2 - lat)%(Math.PI/2));
-                    lon += Math.PI;
-                }
-            }
-            pos = newPos;
+            loc.pos = newPos;
             resetBuffers();
-
         };
         moving.stop = function() {
             moving.currently = false;
-            pos = vec.ints(getPos(0));
-            pos = pos;
+            loc.pos = vec.ints(getPos(0));
+            loc.pos = loc.pos;
+            resetBuffers();
         }
 
         moving.currently = true;
@@ -72,9 +62,9 @@ var Cube = function(sceneData, x, y, z, len, lat, lon, colors) {
 
     var getVertices = function() { /* FIX THIS FUNCTION AND THE ONE BELOW IT. */
         var r = len * 0.5;
-        var x = pos[0];
-        var y = pos[1];
-        var z = pos[2];
+        var x = loc.pos[0];
+        var y = loc.pos[1];
+        var z = loc.pos[2];
         return [
          // Front face
          x-r, y-r, z+r,
@@ -225,6 +215,7 @@ var Cube = function(sceneData, x, y, z, len, lat, lon, colors) {
 
     var draw = function(scene) {
         var gl = scene.gl;
+        scene.mvPushMatrix();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
         gl.vertexAttribPointer(scene.vertexPositionAttribute, 3,
                                gl.FLOAT, false, 0, 0);
@@ -242,6 +233,7 @@ var Cube = function(sceneData, x, y, z, len, lat, lon, colors) {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
         scene.setMatrixUniforms();
         gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+        scene.mvPopMatrix();
     };
 
     var createTexture = function () {
@@ -300,7 +292,7 @@ var Cube = function(sceneData, x, y, z, len, lat, lon, colors) {
         draw: draw,
         moving: moving,
         rotate: rotate,
-        pos: pos
+        loc: loc
     };
     return publicAttrs;
 };
