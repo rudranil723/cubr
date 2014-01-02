@@ -1,5 +1,5 @@
 var COLORS = ["white", "blue", "orange", "green",
-              "red", "yellow", "pink", "#202020"];
+              "red", "yellow", "pink", "#303030"];
 
 var Cube = function(sceneData, x, y, z, len, up, right, colors) {
     /* Cube is centered at (x, y, z)
@@ -13,7 +13,8 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
     var image;
     var loc = {
         pos: [x, y, z],
-        orientation: [up, right],
+        orientation: {up: up,
+                      right: right}
     }
     var buffers = {
         vertices: null,
@@ -27,7 +28,8 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
         y: y,
         z: z,
         len: len,
-        orientation: copy2DArray(loc.orientation)
+        orientation: {up: copyArray(up),
+                      right: copyArray(right)}
     };
 
     var moving = {
@@ -45,15 +47,37 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
                            vec.add(vec.muls(Math.cos(angle*(1-portion)), hand),
                            vec.muls(Math.sin(angle*(1-portion)), right)));
         };
+        var upOrig = loc.orientation.up;
+        var upPerp = vec.cross(axis, upOrig);
+        var rightOrig = loc.orientation.right;
+        var rightPerp = vec.cross(axis, rightOrig);
+        var getOrientation = function(portion) {
+            return {up: (vec.isZero(upPerp) ? upOrig :
+                         vec.add(vec.muls(Math.cos(angle*(1-portion)),
+                                          upOrig),
+                                 vec.muls(Math.sin(angle*(1-portion)),
+                                          upPerp))),
+                    right: (vec.isZero(rightPerp) ? rightOrig :
+                            vec.add(vec.muls(Math.cos(angle*(1-portion)),
+                                             rightOrig),
+                                    vec.muls(Math.sin(angle*(1-portion)),
+                                             rightPerp)))
+            };
+        };
+        // Change these two functions with orientation!
         moving.update = function(portion) {
-            var newPos = getPos(portion);
-            loc.pos = newPos;
+            loc.pos = getPos(portion);
+            loc.orientation = getOrientation(portion);
             resetBuffers();
         };
         moving.stop = function() {
             moving.currently = false;
             loc.pos = vec.ints(getPos(0));
-            loc.pos = loc.pos;
+            var newOrientation = getOrientation(0);
+            loc.orientation = {
+                up: vec.ints(newOrientation.up),
+                right: vec.ints(newOrientation.right)
+            };
             resetBuffers();
         }
 
@@ -62,80 +86,104 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
 
     var getVertices = function() { /* FIX THIS FUNCTION AND THE ONE BELOW IT. */
         var r = len * 0.5;
-        var x = loc.pos[0];
-        var y = loc.pos[1];
-        var z = loc.pos[2];
+        var F = vec.unit(vec.cross(loc.orientation.right, loc.orientation.up));
+        var U = vec.unit(loc.orientation.up);
+        var R = vec.unit(loc.orientation.right);
+        F = vec.muls(r, F);
+        U = vec.muls(r, U);
+        R = vec.muls(r, R);
+        var B = vec.muls(-1, F);
+        var D = vec.muls(-1, U);
+        var L = vec.muls(-1, R);
+
+        var FUL = vec.add(loc.pos, vec.add(F, vec.add(U, L)));
+        var FUR = vec.add(loc.pos, vec.add(F, vec.add(U, R)));
+        var FDL = vec.add(loc.pos, vec.add(F, vec.add(D, L)));
+        var FDR = vec.add(loc.pos, vec.add(F, vec.add(D, R)));
+        var BUL = vec.add(loc.pos, vec.add(B, vec.add(U, L)));
+        var BUR = vec.add(loc.pos, vec.add(B, vec.add(U, R)));
+        var BDL = vec.add(loc.pos, vec.add(B, vec.add(D, L)));
+        var BDR = vec.add(loc.pos, vec.add(B, vec.add(D, R)));
+
         return [
          // Front face
-         x-r, y-r, z+r,
-         x+r, y-r, z+r,
-         x+r, y+r, z+r,
-         x-r, y+r, z+r,
+                FUL[0], FUL[1], FUL[2],
+                FUR[0], FUR[1], FUR[2],
+                FDR[0], FDR[1], FDR[2],
+                FDL[0], FDL[1], FDL[2],
 
          // Back face
-         x-r, y-r, z-r,
-         x+r, y-r, z-r,
-         x+r, y+r, z-r,
-         x-r, y+r, z-r,
+                BUL[0], BUL[1], BUL[2],
+                BUR[0], BUR[1], BUR[2],
+                BDR[0], BDR[1], BDR[2],
+                BDL[0], BDL[1], BDL[2],
 
          // Top face
-         x-r, y+r, z-r,
-         x-r, y+r, z+r,
-         x+r, y+r, z+r,
-         x+r, y+r, z-r,
+                FUL[0], FUL[1], FUL[2],
+                BUL[0], BUL[1], BUL[2],
+                BUR[0], BUR[1], BUR[2],
+                FUR[0], FUR[1], FUR[2],
 
          // Bottom face
-         x-r, y-r, z-r,
-         x-r, y-r, z+r,
-         x+r, y-r, z+r,
-         x+r, y-r, z-r,
+                FDL[0], FDL[1], FDL[2],
+                BDL[0], BDL[1], BDL[2],
+                BDR[0], BDR[1], BDR[2],
+                FDR[0], FDR[1], FDR[2],
+
 
          // Right face
-         x+r, y-r, z-r,
-         x+r, y+r, z-r,
-         x+r, y+r, z+r,
-         x+r, y-r, z+r,
+                FUR[0], FUR[1], FUR[2],
+                FDR[0], FDR[1], FDR[2],
+                BDR[0], BDR[1], BDR[2],
+                BUR[0], BUR[1], BUR[2],
 
          // Left face
-         x-r, y-r, z-r,
-         x-r, y+r, z-r,
-         x-r, y+r, z+r,
-         x-r, y-r, z+r,
+                FUL[0], FUL[1], FUL[2],
+                FDL[0], FDL[1], FDL[2],
+                BDL[0], BDL[1], BDL[2],
+                BUL[0], BUL[1], BUL[2],
                 ];
     };
 
     var getNormals = function () {
+        var F = vec.unit(vec.cross(loc.orientation.right, loc.orientation.up));
+        var U = vec.unit(loc.orientation.up);
+        var R = vec.unit(loc.orientation.right);
+        var B = vec.muls(-1, F);
+        var D = vec.muls(-1, U);
+        var L = vec.muls(-1, R);
+
         return [
          // Front
-         0.0,  0.0,  1.0,
-         0.0,  0.0,  1.0,
-         0.0,  0.0,  1.0,
-         0.0,  0.0,  1.0,
+                F[0], F[1], F[2],
+                F[0], F[1], F[2],
+                F[0], F[1], F[2],
+                F[0], F[1], F[2],
          // Back
-         0.0,  0.0, -1.0,
-         0.0,  0.0, -1.0,
-         0.0,  0.0, -1.0,
-         0.0,  0.0, -1.0,
+                B[0], B[1], B[2],
+                B[0], B[1], B[2],
+                B[0], B[1], B[2],
+                B[0], B[1], B[2],
          // Top
-         0.0,  1.0,  0.0,
-         0.0,  1.0,  0.0,
-         0.0,  1.0,  0.0,
-         0.0,  1.0,  0.0,
+                U[0], U[1], U[2],
+                U[0], U[1], U[2],
+                U[0], U[1], U[2],
+                U[0], U[1], U[2],
          // Bottom
-         0.0, -1.0,  0.0,
-         0.0, -1.0,  0.0,
-         0.0, -1.0,  0.0,
-         0.0, -1.0,  0.0,
+                D[0], D[1], D[2],
+                D[0], D[1], D[2],
+                D[0], D[1], D[2],
+                D[0], D[1], D[2],
          // Right
-         1.0,  0.0,  0.0,
-         1.0,  0.0,  0.0,
-         1.0,  0.0,  0.0,
-         1.0,  0.0,  0.0,
+                R[0], R[1], R[2],
+                R[0], R[1], R[2],
+                R[0], R[1], R[2],
+                R[0], R[1], R[2],
          // Left
-         -1.0,  0.0,  0.0,
-         -1.0,  0.0,  0.0,
-         -1.0,  0.0,  0.0,
-         -1.0,  0.0,  0.0
+                L[0], L[1], L[2],
+                L[0], L[1], L[2],
+                L[0], L[1], L[2],
+                L[0], L[1], L[2],
          ];
     };
 
@@ -316,8 +364,8 @@ var Cubelets = function() {
        cubes = [];
     };
 
-    var add = function(x, y, z, len, lat, lon, colors) {
-        cubes.push(Cube(scene, x, y, z, len, lat, lon, colors));
+    var add = function(x, y, z, len, up, right, colors) {
+        cubes.push(Cube(scene, x, y, z, len, up, right, colors));
     };
 
     var makeMove = function(move) {

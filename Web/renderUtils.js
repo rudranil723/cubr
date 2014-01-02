@@ -42,8 +42,16 @@ var vec = {
         return [Math.round(A[0]),
                 Math.round(A[1]),
                 Math.round(A[2])];
+    },
+    mag: function(A) {
+        return Math.sqrt(vec.mag2(A));
+    },
+    unit: function(A) {
+        return vec.muls(1.0/vec.mag(A), A);
+    },
+    setMag: function(m, A) {
+        return vec.muls(m, vec.unit(A));
     }
-
 };
 
 var feq = function(a, b) {

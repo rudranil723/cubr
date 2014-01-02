@@ -38,7 +38,8 @@ var RubiksCube = function(s) {
                                        (x ==  1) ? 4: -1,
                                        (x == -1) ? 5: -1
                                       ];
-                        cubelets.add(x, y, z, 0.95, 0, 0, colors);
+                        cubelets.add(x, y, z, 0.95,
+                                     [0, 1, 0], [1, 0, 0], colors);
                     }
                 }
             }
@@ -55,27 +56,13 @@ var RubiksCube = function(s) {
             }*/
     };
 
-    var checkForMoves = function(key) {
-        switch (key) {
-        case KEYCODES.f:
-        moveQueue.push(moves.front);
-        break;
-        case KEYCODES.b:
-        moveQueue.push(moves.back);
-        break;
-        case KEYCODES.u:
-        moveQueue.push(moves.up);
-        break;
-        case KEYCODES.d:
-        moveQueue.push(moves.down);
-        break;
-        case KEYCODES.r:
-        moveQueue.push(moves.right);
-        break;
-        case KEYCODES.l:
-        moveQueue.push(moves.left);
-        default:
-        break;
+    var checkForMoves = function(key, keys) {
+        for (var i in moves) {
+            var move = moves[i];
+            if (!keys[key] && (move.key==key)) {
+                moveQueue.push(move);
+                break;
+            }
         }
     };
 
@@ -145,34 +132,40 @@ var RubiksCube = function(s) {
         moves = {
             front: {
                 axis: [0.0, 0.0, 1.0],
-                angle: Math.PI/2,
+                key: KEYCODES.f,
+                angle: -Math.PI/2,
                 applies: function(c){return feq(c.loc.pos[2], 1);}
             },
             back: {
                 axis: [0.0, 0.0, -1.0],
-                angle: Math.PI/2,
+                key: KEYCODES.b,
+                angle: -Math.PI/2,
                 applies: function(c){return feq(c.loc.pos[2], -1);}
             },
             right: {
                 axis: [1.0, 0.0, 0.0],
-                angle: Math.PI/2,
+                key: KEYCODES.r,
+                angle: -Math.PI/2,
                 applies: function(c){return feq(c.loc.pos[0], 1);}
             },
             left: {
                 axis : [-1.0, 0.0, 0.0],
-                angle : Math.PI/2,
+                angle : -Math.PI/2,
+                key: KEYCODES.l,
                 applies : function(c){
                     return feq(c.loc.pos[0], -1);
                 }
             },
             up: {
                 axis : [0.0, 1.0, 0.0],
-                angle : Math.PI/2,
+                key: KEYCODES.u,
+                angle : -Math.PI/2,
                 applies : function(c){return feq(c.loc.pos[1], 1);}
             },
             down: {
                 axis : [0.0, -1.0, 0.0],
-                angle : Math.PI/2,
+                key: KEYCODES.d,
+                angle : -Math.PI/2,
                 applies : function(c){return feq(c.loc.pos[1], -1);}
             }
         }

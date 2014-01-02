@@ -23,7 +23,7 @@ var cubr = function() {
     var onKeyDown = function(e) {
         var keyCode = event.keyCode;
         if (cube)
-            cube.checkForMoves(keyCode);
+            cube.checkForMoves(keyCode, keys);
         if (33 <= keyCode && keyCode <= 40)
             event.preventDefault();
         keys[keyCode] = true;
