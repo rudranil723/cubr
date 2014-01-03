@@ -55,7 +55,7 @@ var SimpleScene = function(canvasID) {
         rendUtil.initShaders(data);
         data.loadIdentity()
         data.mvPushMatrix();
-        data.mvTranslate([0, 0, -10.0]);
+        data.mvTranslate([0, 0, -20.0]);
 
     };
 

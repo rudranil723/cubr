@@ -2,11 +2,21 @@ var cubr = function() {
     var scene;
     var cube;
     var keys;
+    var mouse = {
+        down: false,
+        last: [0, 0],
+    };
+    var momentum = {
+        x: 0,
+        y: 0
+    }
 
     var settings = {
         timerInterval: 20,
-        rotateSpeed: Math.PI / 45,
-        speed: 12,
+        rotateSpeed: Math.PI / 48,
+        speed: 16,
+        dragSensitivity: 0.003,
+        inertia: 0.75
     };
 
     var resetKeys = function() {
@@ -17,7 +27,9 @@ var cubr = function() {
     };
 
     var timerFired = function() {
-        cube.update(keys);
+        cube.update(keys, momentum);
+        momentum.x *= settings.inertia;
+        momentum.y *= settings.inertia;
         scene.draw();
     };
 
@@ -35,6 +47,29 @@ var cubr = function() {
         keys[keyCode] = false;
     };
 
+    var onMouseDown = function(e) {
+        if (e.toElement.id==="glcanvas") {
+            e.preventDefault();
+            mouse.down = true;
+            mouse.last = [e.x, e.y];
+        }
+    };
+
+    var onMouseUp = function(e) {
+        mouse.down = false;
+    };
+
+    var onMouseMove = function(e) {
+        if (mouse.down) {
+            e.preventDefault();
+            if (e.toElement.id==="glcanvas") {
+                momentum.x += settings.dragSensitivity * (e.x - mouse.last[0]);
+                momentum.y += settings.dragSensitivity * (e.y - mouse.last[1]);
+                mouse.last = [e.x, e.y];
+            }
+        }
+    };
+
     var bindEventListeners = function() {
         //document.addEventListener("blur", onLoseFocus, false);
         // Keys
@@ -42,13 +77,13 @@ var cubr = function() {
         document.addEventListener("keydown", onKeyDown, false);
         document.addEventListener("keyup", onKeyUp, false);
         // Mouse clicking
-        //canvas.addEventListener("mousedown", onMouseDown, false);
-        //canvas.addEventListener("mouseup", onMouseUp, false);
+        document.addEventListener("mousedown", onMouseDown, false);
+        document.addEventListener("mouseup", onMouseUp, false);
+        document.addEventListener("mousemove", onMouseMove, false);
         //canvas.addEventListener("click", onClick, false);
         //canvas.addEventListener("dblclick", onDoubleClick, false);
         //document.addEventListener("contextmenu", onRightClick, true);
         // Mouse movement
-        //canvas.addEventListener("mousemove", onMouseMove, false);
         //canvas.addEventListener("mouseout", onMouseExit, false);
         //canvas.addEventListener("mouseover", onMouseEnter, false);
         //canvas.addEventListener("focus", onGainFocus, false);
@@ -64,7 +99,7 @@ var cubr = function() {
     var run = function() {
         scene = SimpleScene("glcanvas");
         cube = RubiksCube(scene, settings);
-        cube.setVersion("3x3x3");
+        cube.setVersion(3);
         cube.setState("solved");
         bindEventListeners();
     }

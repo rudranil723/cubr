@@ -46,10 +46,17 @@ var vec = {
     mag: function(A) {
         return Math.sqrt(vec.mag2(A));
     },
+    zero: function() {
+        return [0, 0, 0];
+    },
     unit: function(A) {
+        if (vec.isZero(A))
+            return vec.zero();
         return vec.muls(1.0/vec.mag(A), A);
     },
     setMag: function(m, A) {
+        if (m==0)
+            return vec.zero();
         return vec.muls(m, vec.unit(A));
     }
 };

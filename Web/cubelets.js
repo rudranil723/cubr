@@ -49,16 +49,16 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
 
     var rotate = function(axis, angle, frameStart) {
         var hand = vec.without(loc.pos, axis);
-        var right = vec.cross(axis, hand);
+        var right = vec.setMag(vec.mag(hand), vec.cross(axis, hand));
         var getPos = function(portion) {
             return vec.add(axis,
                            vec.add(vec.muls(Math.cos(angle*(1-portion)), hand),
                            vec.muls(Math.sin(angle*(1-portion)), right)));
         };
-        var upOrig = loc.orientation.up;
-        var upPerp = vec.cross(axis, upOrig);
-        var rightOrig = loc.orientation.right;
-        var rightPerp = vec.cross(axis, rightOrig);
+        var upOrig = vec.unit(loc.orientation.up);
+        var upPerp = vec.unit(vec.cross(axis, upOrig));
+        var rightOrig = vec.unit(loc.orientation.right);
+        var rightPerp = vec.unit(vec.cross(axis, rightOrig));
         var getOrientation = function(portion) {
             return {up: (vec.isZero(upPerp) ? upOrig :
                          vec.add(vec.muls(Math.cos(angle*(1-portion)),

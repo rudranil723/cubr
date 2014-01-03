@@ -26,20 +26,21 @@ var RubiksCube = function(sce, set) {
     var currentMove;
     var setVersion = function(versionID) {
         cubelets.removeAll();
-        if (versionID == "3x3x3") {
-            for (var z = -1; z <= 1; z++) {
-                for (var y = -1; y <= 1; y++) {
-                    for (var x = -1; x <= 1; x++) {
-                        var colors = [ (z ==  1) ? 0: -1,
-                                       (z == -1) ? 1: -1,
-                                       (y ==  1) ? 2: -1,
-                                       (y == -1) ? 3: -1,
-                                       (x ==  1) ? 4: -1,
-                                       (x == -1) ? 5: -1
-                                      ];
-                        cubelets.add(x, y, z, 0.95,
-                                     [0, 1, 0], [1, 0, 0], colors);
-                    }
+        var sl = versionID;
+        var min = -sl+1;
+        var max = sl-1;
+        for (var z = min; z <= max; z += 2) {
+            for (var y = min; y <= max; y += 2) {
+                for (var x = min; x <= max; x += 2) {
+                    var colors = [ (z ==  max) ? 0: -1,
+                                   (z ==  min) ? 1: -1,
+                                   (y ==  max) ? 2: -1,
+                                   (y ==  min) ? 3: -1,
+                                   (x ==  max) ? 4: -1,
+                                   (x ==  min) ? 5: -1
+                                 ];
+                    cubelets.add(x, y, z, 1.95,
+                                 [0, 1, 0], [1, 0, 0], colors);
                 }
             }
         }
@@ -80,7 +81,7 @@ var RubiksCube = function(sce, set) {
         cubelets.updateRotation();
     }
 
-    var update = function(keys) {
+    var update = function(keys, momentum) {
         cycleMoves();
         applyMoves();
         var r = settings.rotateSpeed;
@@ -94,7 +95,10 @@ var RubiksCube = function(sce, set) {
             dx -= r;
         if (keys[KEYCODES.right])
             dx += r;
+        rotate(dx+momentum.x, dy+momentum.y);
+    };
 
+    var rotate = function(dx, dy) {
         var right = $V([1.0, 0.0, 0.0, 0.0]);
         var up = $V([0.0, 1.0, 0.0, 0.0]);
 
@@ -111,47 +115,46 @@ var RubiksCube = function(sce, set) {
                                      newUp.elements[1],
                                      newUp.elements[2]]);
 
-
     };
 
     var initMoves = function() {
         moveQueue = [];
         moves = {
             front: {
-                axis: [0.0, 0.0, 1.0],
+                axis: [0.0, 0.0, 2.0],
                 key: KEYCODES.f,
                 angle: -Math.PI/2,
-                applies: function(c){return feq(c.ploc.pos[2], 1);}
+                applies: function(c){return feq(c.ploc.pos[2], 2);}
             },
             back: {
-                axis: [0.0, 0.0, -1.0],
+                axis: [0.0, 0.0, -2.0],
                 key: KEYCODES.b,
                 angle: -Math.PI/2,
-                applies: function(c){return feq(c.ploc.pos[2], -1);}
+                applies: function(c){return feq(c.ploc.pos[2], -2);}
             },
             right: {
-                axis: [1.0, 0.0, 0.0],
+                axis: [2.0, 0.0, 0.0],
                 key: KEYCODES.r,
                 angle: -Math.PI/2,
-                applies: function(c){return feq(c.ploc.pos[0], 1);}
+                applies: function(c){return feq(c.ploc.pos[0], 2);}
             },
             left: {
-                axis : [-1.0, 0.0, 0.0],
+                axis : [-2.0, 0.0, 0.0],
                 angle : -Math.PI/2,
                 key: KEYCODES.l,
-                applies : function(c){return feq(c.ploc.pos[0], -1);}
+                applies : function(c){return feq(c.ploc.pos[0], -2);}
             },
             up: {
-                axis : [0.0, 1.0, 0.0],
+                axis : [0.0, 2.0, 0.0],
                 key: KEYCODES.u,
                 angle : -Math.PI/2,
-                applies : function(c){return feq(c.ploc.pos[1], 1);}
+                applies : function(c){return feq(c.ploc.pos[1], 2);}
             },
             down: {
-                axis : [0.0, -1.0, 0.0],
+                axis : [0.0, -2.0, 0.0],
                 key: KEYCODES.d,
                 angle : -Math.PI/2,
-                applies : function(c){return feq(c.ploc.pos[1], -1);}
+                applies : function(c){return feq(c.ploc.pos[1], -2);}
             }
         }
     };
@@ -169,7 +172,8 @@ var RubiksCube = function(sce, set) {
         setVersion: setVersion,
         setState: setState,
         update: update,
-        checkForMoves: checkForMoves
+        checkForMoves: checkForMoves,
+        rotate: rotate
     };
     return publicAttrs;
 };
