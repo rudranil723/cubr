@@ -1,3 +1,206 @@
+var vec = {
+    add: function(A, B) {
+        C = [];
+        for (var i = 0; i < A.length; i++) {
+            C.push(A[i] + B[i]);
+        }
+        return C;
+    },
+    cross: function(A, B) {
+        C = [];
+        C.push(A[1] * B[2] - A[2] * B[1]);
+        C.push(A[2] * B[0] - A[0] * B[2]);
+        C.push(A[0] * B[1] - A[1] * B[0]);
+        return C;
+    },
+    muls: function(s, A) {
+        B = [];
+        for (var i = 0; i < A.length; i++) {
+            B.push(s*A[i]);
+        }
+        return B;
+    },
+    sub: function(A, B) {
+        return vec.add(A, vec.muls(-1, B));
+    },
+    proj: function(A, B) {
+        return vec.muls(vec.dot(A,B)/(vec.mag2(B)), B);
+    },
+    dot: function(A, B) {
+        return A[0]*B[0] + A[1]*B[1] + A[2]*B[2];
+    },
+    mag2: function(A) {
+        return A[0]*A[0] + A[1]*A[1] + A[2]*A[2];
+    },
+    without: function(A, B) {
+        return vec.sub(A, vec.proj(A, B));
+    },
+    isZero: function(A) {
+        return (A[0]==0 && A[1]==0 && A[2]==0);
+    },
+    ints: function(A) {
+        return [Math.round(A[0]),
+                Math.round(A[1]),
+                Math.round(A[2])];
+    },
+    mag: function(A) {
+        return Math.sqrt(vec.mag2(A));
+    },
+    zero: function() {
+        return [0, 0, 0];
+    },
+    unit: function(A) {
+        if (vec.isZero(A))
+            return vec.zero();
+        return vec.muls(1.0/vec.mag(A), A);
+    },
+    setMag: function(m, A) {
+        if (m==0)
+            return vec.zero();
+        return vec.muls(m, vec.unit(A));
+    }
+};
+
+var feq = function(a, b) {
+    return Math.abs(a-b) < 0.0001;
+}
+
+function RenderUtilities() {
+    function clearAll(gl) {
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
+        gl.clearDepth(1.0);                 // Clear everything
+        gl.enable(gl.DEPTH_TEST);           // Enable depth testing
+        gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
+    }
+
+    function initShaders(data) {
+        var gl = data.gl;
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+        // Create the shader program
+        data.shaderProgram = gl.createProgram();
+        gl.attachShader(data.shaderProgram, vertexShader);
+        gl.attachShader(data.shaderProgram, fragmentShader);
+        gl.linkProgram(data.shaderProgram);
+        // If creating the shader program failed, alert
+        if (!gl.getProgramParameter(data.shaderProgram, gl.LINK_STATUS)) {
+            alert("Unable to initialize the shader program.");
+        }
+        gl.useProgram(data.shaderProgram);
+        data.vertexPositionAttribute = gl.getAttribLocation(data.shaderProgram,
+                                                       "aVertexPosition");
+        gl.enableVertexAttribArray(data.vertexPositionAttribute);
+        data.textureCoordAttribute = gl.getAttribLocation(data.shaderProgram,
+                                                     "aTextureCoord");
+        gl.enableVertexAttribArray(data.textureCoordAttribute);
+        data.vertexNormalAttribute = gl.getAttribLocation(data.shaderProgram,
+                                                     "aVertexNormal");
+        gl.enableVertexAttribArray(data.vertexNormalAttribute);
+    }
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        // Didn't find an element with the specified ID; abort.
+        if (!shaderScript) {
+            return null;
+        }
+        // Walk through the source element's children, building the
+        // shader source string.
+        var theSource = "";
+        var currentChild = shaderScript.firstChild;
+        while(currentChild) {
+            if (currentChild.nodeType == 3) {
+                theSource += currentChild.textContent;
+            }
+            currentChild = currentChild.nextSibling;
+        }
+        // Now figure out what type of shader script we have,
+        // based on its MIME type.
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;  // Unknown shader type
+        }
+        // Send the source to the shader object
+        gl.shaderSource(shader, theSource);
+        // Compile the shader program
+        gl.compileShader(shader);
+        // See if it compiled successfully
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert("An error occurred compiling the shaders: " +
+                  gl.getShaderInfoLog(shader));
+            return null;
+        }
+        return shader;
+    };
+
+    this.clearAll = clearAll;
+    this.initShaders = initShaders;
+}
+var rendUtil = new RenderUtilities();
+
+function MatrixUtilities() {
+    var loadIdentity = function(data) {
+        data.mvMatrix = Matrix.I(4);
+    };
+
+    var multMatrix = function(data, m) {
+        data.mvMatrix = data.mvMatrix.x(m);
+    };
+
+    var mvTranslate = function(data, v) {
+        multMatrix(data,
+                   Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
+    };
+
+    var setMatrixUniforms = function(data) {
+        var gl = data.gl;
+        var pUniform = gl.getUniformLocation(data.shaderProgram, "uPMatrix");
+        gl.uniformMatrix4fv(pUniform, false,
+                            new Float32Array(data.perspectiveMatrix.flatten()));
+        var mvUniform = gl.getUniformLocation(data.shaderProgram, "uMVMatrix");
+        gl.uniformMatrix4fv(mvUniform, false,
+                            new Float32Array(data.mvMatrix.flatten()));
+        var normalMatrix = data.mvMatrix.inverse();
+        normalMatrix = normalMatrix.transpose();
+        var nUniform = gl.getUniformLocation(data.shaderProgram,
+                                             "uNormalMatrix");
+        gl.uniformMatrix4fv(nUniform, false,
+                            new Float32Array(normalMatrix.flatten()));
+    };
+
+    var mvPushMatrix = function(data, m) {
+        if (m) {
+            data.mvMatrixStack.push(m.dup());
+            data.mvMatrix = m.dup();
+        } else {
+            data.mvMatrixStack.push(data.mvMatrix.dup());
+        }
+    };
+    var mvPopMatrix = function(data) {
+        if (!data.mvMatrixStack.length) {
+            throw("Can't pop from an empty matrix stack.");
+        }
+        data.mvMatrix = data.mvMatrixStack.pop();
+        return data.mvMatrix;
+    };
+    var mvRotate = function(data, angle, v) {
+        var m = Matrix.Rotation(angle, $V([v[0], v[1], v[2]])).ensure4x4();
+        multMatrix(data, m);
+    };
+
+    this.loadIdentity = loadIdentity;
+    this.mvTranslate = mvTranslate;
+    this.mvPushMatrix = mvPushMatrix;
+    this.mvPopMatrix = mvPopMatrix;
+    this.mvRotate = mvRotate;
+    this.setMatrixUniforms = setMatrixUniforms;
+}
+var matUtil = new MatrixUtilities();
+
 function SimpleScene(canvasID) {
     'use strict';
     // `canvasID` is the id of the canvas element used for the scene.
