@@ -16,7 +16,9 @@ var cubr = function() {
         rotateSpeed: Math.PI / 48,
         speed: 16,
         dragSensitivity: 0.003,
-        inertia: 0.75
+        inertia: 0.75,
+        colors: ["white", "blue", "orange", "green",
+                 "red", "yellow", "pink", "#303030"]
     };
 
     var resetKeys = function() {
@@ -100,11 +102,16 @@ var cubr = function() {
         scene = SimpleScene("glcanvas");
         cube = RubiksCube(scene, settings);
         cube.setVersion(3);
-        cube.setState("solved");
         bindEventListeners();
+    };
+
+    var reset = function() {
+        cube.setState("solved");
     }
 
-    var publicAttrs = {run: run,
+    var publicAttrs = {
+        run: run,
+        reset: reset,
     };
     return publicAttrs;
 }();

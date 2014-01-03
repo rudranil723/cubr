@@ -11,11 +11,6 @@ var KEYCODES = {
     b: 66
 };
 
-COLORS; /* From cubelets.js */
-/* ORDER:
- * front, back, top, bottom, right, left
- *
- */
 var RubiksCube = function(sce, set) {
     var cubelets;
     var scene;
@@ -46,16 +41,6 @@ var RubiksCube = function(sce, set) {
         }
     };
 
-    var setState = function(state) {
-        /*
-        if (state == "solved") {
-            for (cubelet in cubelets.iterate()) {
-                cubelet.setPosition(cubelet.solvedPos);
-                cubelet.setOrientation(cubelet.solvedPos);
-            }
-            }*/
-    };
-
     var checkForMoves = function(key, keys) {
         for (var i in moves) {
             var move = moves[i];
@@ -71,19 +56,13 @@ var RubiksCube = function(sce, set) {
     };
 
     var cycleMoves = function() {
-        if (moveQueue.length > 0) {
-            if (makeMove(moveQueue[0]))
-                moveQueue.shift();
-        }
+        while (moveQueue.length > 0 && makeMove(moveQueue[0]))
+            moveQueue.shift();
     };
-
-    var applyMoves = function() {
-        cubelets.updateRotation();
-    }
 
     var update = function(keys, momentum) {
         cycleMoves();
-        applyMoves();
+        cubelets.updateRotation();
         var r = settings.rotateSpeed;
         var dx = 0;
         var dy = 0;
@@ -162,7 +141,7 @@ var RubiksCube = function(sce, set) {
     var init = function(sce, set) {
         scene = sce;
         settings = set;
-        cubelets = Cubelets();
+        cubelets = Cubelets(settings);
         initMoves();
         scene.linkObjects(cubelets);
     };
@@ -170,7 +149,7 @@ var RubiksCube = function(sce, set) {
 
     var publicAttrs = {
         setVersion: setVersion,
-        setState: setState,
+        setState: cubelets.setState,
         update: update,
         checkForMoves: checkForMoves,
         rotate: rotate

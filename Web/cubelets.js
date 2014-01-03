@@ -1,7 +1,4 @@
-var COLORS = ["white", "blue", "orange", "green",
-              "red", "yellow", "pink", "#303030"];
-
-var Cube = function(sceneData, x, y, z, len, up, right, colors) {
+var Cube = function(sceneData, x, y, z, len, up, right, colors, set) {
     /* Cube is centered at (x, y, z)
      * Each edge has length `len`
      * Azimuth angle with the z axis is lat
@@ -9,9 +6,11 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
      */
     var colors = colors;
     var scene;
+    var settings;
     var texture;
     var image;
     var loc = {
+        len: len,
         pos: [x, y, z],
         orientation: {up: up,
                       right: right}
@@ -22,7 +21,8 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
         orientation: {up: copyArray(up),
                       right: copyArray(right)}
 
-    }
+    };
+
     var buffers = {
         vertices: null,
         normals: null,
@@ -31,12 +31,19 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
     };
 
     var home = {
-        x: x,
-        y: y,
-        z: z,
+        pos: [x, y, z],
         len: len,
         orientation: {up: copyArray(up),
                       right: copyArray(right)}
+    };
+
+    var returnHome = function() {
+        loc.pos = copyArray(home.pos);
+        loc.orientation.up = copyArray(home.orientation.up);
+        loc.orientation.right = copyArray(home.orientation.right);
+        loc.len = home.len;
+        snap();
+        resetBuffers();
     };
 
     var moving = {
@@ -46,6 +53,18 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
         frameStart: null,
         frameCurrent: null,
     };
+
+    var snap = function() {
+        loc.pos = vec.ints(loc.pos);
+        loc.orientation = {
+            up: vec.ints(loc.orientation.up),
+            right: vec.ints(loc.orientation.right)
+        };
+        ploc.pos = copyArray(loc.pos);
+        ploc.orientation = {up: copyArray(loc.orientation.up),
+                            right: copyArray(loc.orientation.right)};
+
+    }
 
     var rotate = function(axis, angle, frameStart) {
         var hand = vec.without(loc.pos, axis);
@@ -82,16 +101,10 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
             return (moving.frameCurrent == -1);
         };
         moving.stop = function() {
+            loc.pos = getPos(0);
+            loc.orientation = getOrientation(0);
+            snap();
             moving.currently = false;
-            loc.pos = vec.ints(getPos(0));
-            var newOrientation = getOrientation(0);
-            loc.orientation = {
-                up: vec.ints(newOrientation.up),
-                right: vec.ints(newOrientation.right)
-            };
-            ploc.pos = copyArray(loc.pos);
-            ploc.orientation = {up: copyArray(loc.orientation.up),
-                                right: copyArray(loc.orientation.right)};
             resetBuffers();
         }
         moving.currently = true;
@@ -100,7 +113,7 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
     };
 
     var getVertices = function() { /* FIX THIS FUNCTION AND THE ONE BELOW IT. */
-        var r = len * 0.5;
+        var r = loc.len * 0.5;
         var F = vec.unit(vec.cross(loc.orientation.right, loc.orientation.up));
         var U = vec.unit(loc.orientation.up);
         var R = vec.unit(loc.orientation.right);
@@ -319,10 +332,10 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
         var W = 128;
         var H = 128;
 
-        for (var f = 0; f < COLORS.length; f++) {
+        for (var f = 0; f < settings.colors.length; f++) {
             ctx.beginPath();
             ctx.rect(0, H*f, W, H);
-            ctx.fillStyle = COLORS[f];
+            ctx.fillStyle = settings.colors[f];
             ctx.fill();
         }
         ctx.restore();
@@ -344,26 +357,29 @@ var Cube = function(sceneData, x, y, z, len, up, right, colors) {
         return texture;
     };
 
-    var init = function(s) {
-        scene = s;
+    var init = function(sce, set) {
+        scene = sce;
+        settings = set;
         texture = createTexture();
         resetBuffers();
     };
-    init(sceneData);
+    init(sceneData, set);
 
     var publicAttrs = {
         draw: draw,
         moving: moving,
         rotate: rotate,
         loc: loc,
-        ploc: ploc
+        ploc: ploc,
+        returnHome: returnHome
     };
     return publicAttrs;
 };
 
-var Cubelets = function() {
+var Cubelets = function(set) {
     var cubes = [];
     var scene;
+    var settings;
 
     var linkRendering = function(d) {
         scene = d;
@@ -381,7 +397,7 @@ var Cubelets = function() {
     };
 
     var add = function(x, y, z, len, up, right, colors) {
-        cubes.push(Cube(scene, x, y, z, len, up, right, colors));
+        cubes.push(Cube(scene, x, y, z, len, up, right, colors, settings));
     };
 
     var makeMove = function(move, moveFrameStart) {
@@ -401,6 +417,15 @@ var Cubelets = function() {
         return true;
     };
 
+    var setState = function(state) {
+        if (state==="solved") {
+            for (var i = 0; i < cubes.length; i++) {
+                var cube = cubes[i];
+                cube.returnHome();
+            }
+        }
+    };
+
     var updateRotation = function() {
         for (var i = 0; i < cubes.length; i++) {
             var cube = cubes[i];
@@ -411,9 +436,10 @@ var Cubelets = function() {
         }
     };
 
-    var init = function(c) {
-
+    var init = function(set) {
+        settings = set;
     };
+    init(set);
 
     var publicAttrs = {
         linkRendering: linkRendering,
@@ -421,7 +447,8 @@ var Cubelets = function() {
         removeAll: removeAll,
         updateRotation: updateRotation,
         makeMove: makeMove,
-        add: add
+        add: add,
+        setState: setState
     };
 
     return publicAttrs;
