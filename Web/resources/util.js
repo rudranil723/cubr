@@ -102,8 +102,116 @@ function PQ_insert(elem, priority) {
 }
 
 function PQ_pop() {
+    var item,
+        idx,
+        child;
     if (this.isEmpty()) return;
     this.size--;
-    return this.Q.splice(1, 1)[0][0];
+    item = this.Q[1][0];
+    this.Q[1] = this.Q.pop();
+    idx = 1;
+    while (idx*2 < this.size && this.Q[idx*2][1] < this.Q[idx][1]) {
+        child = this.Q[idx*2];
+        this.Q[idx*2] = this.Q[idx];
+        this.Q[idx] = child;
+        idx *= 2;
+    }
+    return item;
 }
 
+/* vec is a limited vector library for strictly 3-dimensional vectors */
+var vec = {
+    add: function(A, B) {
+        var C = [];
+        for (var i = 0; i < A.length; i++) {
+            C.push(A[i] + B[i]);
+        }
+        return C;
+    },
+    cross: function(A, B) {
+        var C = [];
+        C.push(A[1] * B[2] - A[2] * B[1]);
+        C.push(A[2] * B[0] - A[0] * B[2]);
+        C.push(A[0] * B[1] - A[1] * B[0]);
+        return C;
+    },
+    muls: function(s, A) {
+        var B = [];
+        for (var i = 0; i < A.length; i++) {
+            B.push(s*A[i]);
+        }
+        return B;
+    },
+    sub: function(A, B) {
+        return vec.add(A, vec.muls(-1, B));
+    },
+    proj: function(A, B) {
+        return vec.muls(vec.dot(A,B)/(vec.mag2(B)), B);
+    },
+    dot: function(A, B) {
+        return A[0]*B[0] + A[1]*B[1] + A[2]*B[2];
+    },
+    mag2: function(A) {
+        return A[0]*A[0] + A[1]*A[1] + A[2]*A[2];
+    },
+    without: function(A, B) {
+        return vec.sub(A, vec.proj(A, B));
+    },
+    isZero: function(A) {
+        return (A[0]==0 && A[1]==0 && A[2]==0);
+    },
+    ints: function(A) {
+        return [Math.round(A[0]),
+                Math.round(A[1]),
+                Math.round(A[2])];
+    },
+    mag: function(A) {
+        return Math.sqrt(vec.mag2(A));
+    },
+    zero: function() {
+        return [0, 0, 0];
+    },
+    unit: function(A) {
+        if (vec.isZero(A))
+            return vec.zero();
+        return vec.muls(1.0/vec.mag(A), A);
+    },
+    setMag: function(m, A) {
+        if (m==0)
+            return vec.zero();
+        return vec.muls(m, vec.unit(A));
+    },
+    eq: function(A, B) {
+        return (feq(A[0], B[0]) &&
+                feq(A[1], B[1]) &&
+                feq(A[2], B[2]));
+    },
+    parallel: function(A, B) {
+        return (feq(0, vec.mag(vec.cross(A, B))) &&
+                vec.dot(A, B) > 0);
+    },
+    parallels: function(A, B) {
+        return (feq(0, vec.mag(vec.cross(A, B))) &&
+                vec.dot(A, B) != 0);
+    },
+    str: function(A) {
+        return ("<" + A[0].toString() + ", " +
+                A[1].toString() + ", " +
+                A[2].toString() + ">");
+    },
+    getPerpendicular: function (A) {
+        var crossed = vec.cross(A, [0, 1, 0]);
+        if (vec.isZero(crossed))
+            return [1, 0, 0];
+        else
+            return crossed;
+    }
+};
+
+var feq = function(a, b) {
+    return Math.abs(a-b) < 0.0001;
+};
+
+function afeq(a, b) {
+    return feq(Math.abs(a), Math.abs(b));
+};
