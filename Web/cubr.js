@@ -218,8 +218,7 @@ function SimpleScene(canvasID) {
     this.data = data;
 }
 
-function transformPortion(portion) {
-    var expFactor = 0.6666666;
+function transformPortion(portion, expFactor) {
     if (portion > 0.5) {
         return 0.5 + (0.5 * Math.pow(2*(portion-0.5), expFactor));
     } else {
@@ -299,9 +298,9 @@ function Cube(sceneData, x, y, z, len, up, right, cols, set, atHome,
 
     function getState() {
         return new Cube(sceneData,
-                        loc.pos[0], loc.pos[1], loc.pos[2],
-                        loc.len, copyArray(loc.orientation.up),
-                        copyArray(loc.orientation.right),
+                        ploc.pos[0], ploc.pos[1], ploc.pos[2],
+                        ploc.len, copyArray(ploc.orientation.up),
+                        copyArray(ploc.orientation.right),
                         cols, set, false,
                         home.pos[0], home.pos[1], home.pos[2],
                         home.len, copyArray(home.orientation.up),
@@ -361,13 +360,18 @@ function Cube(sceneData, x, y, z, len, up, right, cols, set, atHome,
             };
         moving.update = function () {
             var portion = moving.frameCurrent / moving.frameStart;
-            portion = transformPortion(portion);
+            portion = transformPortion(portion, settings.turnAcceleration);
             loc.pos = getPos(portion);
             loc.orientation = getOrientation(portion);
             resetBuffers();
             moving.frameCurrent -= 1;
+            if (moving.frameCurrent <= -1) {
+                /* Stop rotating */
+                moving.stop();
+            }
             return (moving.frameCurrent <= -1);
         };
+
         moving.stop = function () {
             loc.pos = getPos(0);
             loc.orientation = getOrientation(0);
@@ -375,9 +379,11 @@ function Cube(sceneData, x, y, z, len, up, right, cols, set, atHome,
             moving.currently = false;
             resetBuffers();
         };
+
         moving.currently = true;
         moving.frameStart = frameStart;
         moving.frameCurrent = frameStart;
+        moving.update();
     }
 
     /* Used by resetBuffers */
@@ -656,6 +662,31 @@ function Cube(sceneData, x, y, z, len, up, right, cols, set, atHome,
         return tex;
     }
 
+    function tostring() {
+        var outwardColors = [];
+        for (var i = 0; i < colors.length; i++) {
+            var color = colors[i];
+            if (color !== -1) {
+                outwardColors.push(settings.colors[color]);
+            }
+        }
+        switch (outwardColors.length) {
+        case 0:
+            return "inner piece";
+        case 1:
+            return outwardColors[0] + " center piece";
+        case 2:
+            return outwardColors[0] + " and " +
+                outwardColors[1] + " edge piece";
+        case 3:
+            return outwardColors[0] + ", " +
+                outwardColors[1] + ", and " +
+                outwardColors[2] + " corner piece";
+        default:
+            return "unknown piece";
+        }
+    }
+
     function init(sce, set, cols) {
         scene = sce;
         settings = set;
@@ -673,6 +704,7 @@ function Cube(sceneData, x, y, z, len, up, right, cols, set, atHome,
     this.home = home;
     this.returnHome = returnHome;
     this.getState = getState;
+    this.str = tostring;
 }
 
 function Cubelets(set) {
@@ -796,9 +828,7 @@ function Cubelets(set) {
         for (i = 0; i < cubes.length; i += 1) {
             cube = cubes[i];
             if (cube.moving.currently) {
-                if (cube.moving.update()) {
-                    cube.moving.stop();
-                }
+                cube.moving.update()
             }
         }
     }
@@ -889,17 +919,7 @@ function RubiksCube(sce, set) {
     }
 
     function makeMoves(moveList) {
-        var i,
-            moveIdx,
-            move,
-            movesToMake = [];
-        for (i = 0; i < moveList.length; i += 1) {
-            moveIdx = moveList[i];
-            if (moves.hasOwnProperty(moveIdx)) {
-                movesToMake.push(moves[moveIdx]);
-            }
-        }
-        enqueueMoves(movesToMake, false);
+        enqueueMoves(moveList, false);
     };
 
     function enqueueMoves(moves, clearOthers) {
@@ -909,14 +929,26 @@ function RubiksCube(sce, set) {
         moveQueue.push.apply(moveQueue, moves);
     }
 
-    function shuffle(startAction, endAction) {
+    function shuffle(startAction, endAction, numMoves) {
         var i,
-            randomMoves;
+            randomMoves,
+            info;
         randomMoves = [];
+        info = {moves: randomMoves,
+                newMove: function (i) {
+                info.moves.push(randomMove());
+                info.moves.push({action: function () {
+                            cubr.updateProgressBar((1.0* i) / numMoves);
+                        }});
+            }
+        };
         randomMoves.push({"action": startAction});
-        for (i = 0; i < settings.shuffleLength; i += 1) {
-            randomMoves.push(randomMove());
+        for (i = 0; i < numMoves; i += 1) {
+            info.newMove(i);
         }
+        randomMoves.push({"action": function () {
+                    cubr.updateProgressBar(0);
+                }});
         randomMoves.push({"action": endAction});
         enqueueMoves(randomMoves, false);
     }
@@ -927,8 +959,18 @@ function RubiksCube(sce, set) {
     }
 
     function cycleMoves() {
-        while (moveQueue.length > 0 && makeMove(moveQueue[0])) {
-            moveQueue.shift();
+        var soFar = 0;
+        var move;
+        while (moveQueue.length > 0 &&
+               soFar < settings.movesPerFrame &&
+               !settings.paused) {
+            move = moveQueue[0];
+            if (!makeMove(move)) {
+                break;
+            } else {
+                moveQueue.shift();
+            }
+            soFar++;
         }
     }
 
@@ -1176,6 +1218,16 @@ function RubiksCube(sce, set) {
     this.makeMoves = makeMoves;
 }
 
+function getShuffleLength() {
+    var len = document.getElementById("shuffleLength");
+    return parseInt(len.options[len.selectedIndex].value);
+}
+
+function getTutorial() {
+    var tut = document.getElementById("tutorSelect");
+    return tut.options[tut.selectedIndex].value === "on";
+}
+
 function Cubr() {
     'use strict';
     var scene,
@@ -1186,7 +1238,10 @@ function Cubr() {
         settings = {
             timerInterval: 20,
             rotateSpeed: Math.PI / 48,
+            defaultSpeed: 12,
             speed: 12,
+            movesPerFrame: 3,
+            defaultMPF: 3,
             dragSensitivity: 0.003,
             inertia: 0.75,
             colors: ["green", "blue", "white", "yellow",
@@ -1195,14 +1250,17 @@ function Cubr() {
                 x: 0.55,
                 y: 1.65
             },
-            shuffleLength: 50,
+            shuffleLength: getShuffleLength,
+            tutorial: getTutorial,
             progBar: {
                 queueMin: 3,
                 queueMax: 10,
                 color: "green",
                 margin: 10,
                 thickness: 20
-            }
+            },
+            turnAcceleration: 2/3,
+            paused: false
         };
 
     function resetKeys() {
@@ -1285,9 +1343,15 @@ function Cubr() {
     }
 
     function shuffle() {
-        var origSpeed = settings.speed;
-        cube.shuffle(function () {settings.speed = 0; },
-                     function () {settings.speed = origSpeed; });
+        var numMoves = settings.shuffleLength();
+        cube.shuffle(function () {
+                settings.speed = (numMoves < 100) ? 3: 0;
+                settings.movesPerFrame = (numMoves > 500) ? 20: 3;
+            },
+            function () {
+                settings.speed = settings.defaultSpeed;
+                settings.movesPerFrame = settings.defaultMPF;
+            }, numMoves);
     }
 
     function solve() {
@@ -1295,9 +1359,46 @@ function Cubr() {
         cube.makeMoves(moves);
     }
 
+    function updateStatus(s) {
+        var box = document.getElementById("statusBox");
+        box.innerHTML = s;
+    }
+
+    function updateProgressBar(percent) {
+        var bar = document.getElementById("progressBar");
+        var cont = document.getElementById("progressBarContainer");
+        var maxWidth = cont.width.baseVal.value;
+        bar.setAttribute("width", (~~(percent * maxWidth)).toString());
+    }
+
+    function updatePauseButton() {
+        var text = settings.paused ? "Unpause" : "Pause";
+        document.getElementById("pause").value = text;
+    };
+
     this.run = run;
     this.reset = reset;
     this.shuffle = shuffle;
     this.solve = solve;
+    this.updateStatus = updateStatus;
+    this.updateProgressBar = updateProgressBar;
+    this.pause = function () {
+        settings.paused = true;
+        updatePauseButton();
+    };
+    this.unpause = function () {
+        settings.paused = false;
+        updatePauseButton();
+    };
+    this.togglePause = function () {
+        settings.paused = !(settings.paused);
+        updatePauseButton();
+    };
+    this.pauseOnTutorial = function () {
+        if (settings.tutorial()) {
+            settings.paused = true;
+            updatePauseButton();
+        }
+    };
 }
 var cubr = new Cubr();

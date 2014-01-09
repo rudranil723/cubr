@@ -9,6 +9,13 @@ function alignedWithAxis(cube, axis) {
                  vec.dot(axis, cube.home.orientation.right)));
 }
 
+function palignedWithAxis(cube, axis) {
+    return (feq(vec.dot(axis, cube.ploc.orientation.up),
+                 vec.dot(axis, cube.home.orientation.up)) &&
+            feq(vec.dot(axis, cube.ploc.orientation.right),
+                 vec.dot(axis, cube.home.orientation.right)));
+}
+
 function alignedWithAxes(cube, home, current) {
     return (afeq(vec.dot(vec.unit(current), vec.unit(cube.ploc.orientation.up)),
                  vec.dot(vec.unit(home), vec.unit(cube.home.orientation.up))) &&
@@ -31,20 +38,36 @@ function currentAxis(cube, axis) {
     return vec.add(upComp, vec.add(rightComp, backComp));
 }
 
-function makeMoves(axesToRotate, info) {
+function makeMoves(axesToRotate, info, message) {
     var i,
         axis,
         angle,
         idx,
         move;
+    message = message || "";
+    info.moves.push({action: function () {
+                cubr.updateStatus(message);
+            }});
     for (i = 0; i < axesToRotate.length; i += 1) {
-        axis = axesToRotate[i][0];
-        angle = axesToRotate[i][1];
-        idx = info.state.getIdxFromMove(axis, angle);
-        move = info.state.getMoveFromIdx(idx);
-        info.state.makeMove(move);
-        info.moves.push(idx);
+        move = axesToRotate[i];
+        if (move.hasOwnProperty("action")) {
+            info.moves.push(move);
+        } else {
+            axis = move[0];
+            angle = move[1];
+            idx = info.state.getIdxFromMove(axis, angle);
+            move = info.state.getMoveFromIdx(idx);
+            info.state.makeMove(move);
+            info.moves.push(move);
+        }
     }
+    info.moves.push({action: function() {
+                cubr.pauseOnTutorial();
+            }});
+    info.moves.push({action: function() {
+                cubr.updateStatus("");
+            }});
+
 }
 
 /* TOP CROSS */
@@ -54,7 +77,7 @@ function retain(info) { return; }
 function flipTXB(info) {
     var axes = [];
     /* Move piece onto second layer */
-    axes.push([vec.without(info.cube.ploc.pos, info.topLayer), COUNTERCW]);
+    axes.push([info.withoutTop(info.cube.ploc.pos), COUNTERCW]);
     /* Rotate first layer */
     if (info.numDone > 0)
         axes.push([info.topLayer, CLOCKWISE]);
@@ -62,7 +85,9 @@ function flipTXB(info) {
     axes.push([vec.cross(info.cube.ploc.pos, info.topLayer), COUNTERCW]);
     /* Return first layer orientation */
     axes.push([info.topLayer, COUNTERCW]);
-    makeMoves(axes, info);
+    makeMoves(axes, info, "Flip the " +
+              info.cube.str() +
+              " on the first layer.");
 }
 
 function easeOfFTXB(info) {
@@ -72,11 +97,29 @@ function easeOfFTXB(info) {
         return 3;
 }
 
+function faceStr(v) {
+    if (vec.parallel(v, [0, 1, 0])) {
+        return "top";
+    } else if (vec.parallel(v, [0, -1, 0])) {
+        return "bottom";
+    } else if (vec.parallel(v, [1, 0, 0])) {
+        return "right";
+    } else if (vec.parallel(v, [-1, 0, 0])) {
+        return "left";
+    } else if (vec.parallel(v, [0, 0, 1])) {
+        return "front";
+    } else if (vec.parallel(v, [0, 0, -1])) {
+        return "back";
+    } else {
+        return "unknown";
+    }
+}
+
 function relocateTopLayerTXB(info) {
     var angle1,
         angle2;
-    var desired = vec.without(info.cube.home.pos, info.topLayer);
-    var current = vec.without(info.cube.ploc.pos, info.topLayer);
+    var desired = info.withoutTop(info.cube.home.pos);
+    var current = info.withoutTop(info.cube.ploc.pos);
     if (vec.parallels(desired, current)) {
         angle1 = ONEEIGHTY;
         angle2 = ONEEIGHTY;
@@ -97,8 +140,9 @@ function relocateTopLayerTXB(info) {
         axes.push([current, CLOCKWISE]);
     }
     axes.push([info.topLayer, angle2]);
-    makeMoves(axes, info);
-
+    makeMoves(axes, info, "Move the " + info.cube.str() +
+              " on the first layer from the " + faceStr(current) +
+              " face to the " + faceStr(desired) + " face.");
 }
 
 function easeOfRLTLTXB(info) {
@@ -126,7 +170,9 @@ function reorientTopLayerTXB(info) {
         axes.push([current, CLOCKWISE]);
         axes.push([desired, CLOCKWISE]);
     }
-    makeMoves(axes, info);
+    makeMoves(axes, info, "Move the " + info.cube.str() +
+              " on the first layer from the " + faceStr(current) +
+              " face to the " + faceStr(desired) + " face.");
 }
 
 function easeOfTLTXB(info) {
@@ -182,7 +228,8 @@ function secondLayerTXB(info) {
             axes.push([info.topLayer, ONEEIGHTY]);
         }
     }
-    makeMoves(axes, info);
+    makeMoves(axes, info, "Move the " + info.cube.str() + " from the " +
+              "second layer to the first layer.");
 }
 
 function easeOfSLTXB(info) {
@@ -221,7 +268,8 @@ function relocateBottomLayerTXB(info) {
         axes.push([current, ONEEIGHTY]);
         axes.push([info.topLayer, CLOCKWISE]);
     }
-    makeMoves(axes, info);
+    makeMoves(axes, info, "Move the " + info.cube.str() + " from the " +
+              "bottom layer to the first layer.");
 }
 
 function easeOfBLTXB(info) {
@@ -260,7 +308,8 @@ function reorientBottomLayerTXB(info) {
         axes.push([vec.cross(current, info.topLayer), COUNTERCW]);
 
     }
-    makeMoves(axes, info);
+    makeMoves(axes, info, "Move the " + info.cube.str() + " from the " +
+              "bottom layer to the first layer.");
 
 }
 
@@ -282,7 +331,8 @@ function moveDownTCB(info) {
         axes.push([bottomLayer, CLOCKWISE]);
         axes.push([left, COUNTERCW]);
     }
-    makeMoves(axes, info);
+    makeMoves(axes, info, "Move the mispositioned " + info.cube.str() +
+              " from the first layer to the third layer.");
 }
 
 function moveUpTCB(info) {
@@ -327,7 +377,83 @@ function moveUpTCB(info) {
             axes.push([c, COUNTERCW]);
         }
     }
-    makeMoves(axes, info);
+    makeMoves(axes, info, "Move the " + info.cube.str() +
+              " from the third layer to the first layer.");
+}
+
+function moveDownSL(info) {
+    var topLayer = info.topLayer;
+    var bottomLayer = vec.muls(-1, topLayer);
+    var current = vec.unit(info.cube.ploc.pos);
+    var right = vec.unit(vec.add(vec.unit(current),
+                                 vec.unit(vec.cross(vec.unit(topLayer),
+                                                    vec.unit(current)))));
+    var left = vec.unit(vec.without(current, right));
+    var bleft = vec.muls(-1, right);
+    var bright = vec.muls(-1, left);
+    var axes = [];
+    axes.push([right, COUNTERCW]);
+    axes.push([bottomLayer, CLOCKWISE]);
+    axes.push([right, CLOCKWISE]);
+    axes.push([bottomLayer, CLOCKWISE]);
+    axes.push([left, CLOCKWISE]);
+    axes.push([bottomLayer, COUNTERCW]);
+    axes.push([left, COUNTERCW]);
+    makeMoves(axes, info, "Move the misplaced " + info.cube.str() +
+              " from the second layer to the third layer.");
+
+}
+
+function moveUpSL(info) {
+    var axes = [];
+    var topLayer = info.topLayer;
+    var bottomLayer = vec.muls(-1, topLayer);
+    var current = info.withoutTop(info.cube.ploc.pos);
+    var desired = info.cube.home.pos;
+    var right = vec.unit(vec.add(vec.unit(desired),
+                                 vec.unit(vec.cross(vec.unit(topLayer),
+                                                    vec.unit(desired)))));
+    var left = vec.unit(vec.without(desired, right));
+    var bleft = vec.muls(-1, right);
+    var bright = vec.muls(-1, left);
+    if (info.onTop(vec.cross(current, currentAxis(info.cube, topLayer)))) {
+        /* Align with left side */
+        if (!vec.parallel(current, bleft)) {
+            if (vec.parallel(current, right)) {
+                axes.push([bottomLayer, ONEEIGHTY]);
+            } else if (vec.parallel(current, left)) {
+                axes.push([bottomLayer, COUNTERCW]);
+            } else {
+                axes.push([bottomLayer, CLOCKWISE]);
+            }
+        }
+        axes.push([right, COUNTERCW]);
+        axes.push([bottomLayer, CLOCKWISE]);
+        axes.push([right, CLOCKWISE]);
+        axes.push([bottomLayer, CLOCKWISE]);
+        axes.push([left, CLOCKWISE]);
+        axes.push([bottomLayer, COUNTERCW]);
+        axes.push([left, COUNTERCW]);
+    } else {
+        if (!vec.parallel(current, bright)) {
+            if (vec.parallel(current, left)) {
+                axes.push([bottomLayer, ONEEIGHTY]);
+            } else if (vec.parallel(current, right)) {
+                axes.push([bottomLayer, CLOCKWISE]);
+            } else {
+                axes.push([bottomLayer, COUNTERCW]);
+            }
+        }
+        axes.push([left, CLOCKWISE]);
+        axes.push([bottomLayer, COUNTERCW]);
+        axes.push([left, COUNTERCW]);
+        axes.push([bottomLayer, COUNTERCW]);
+        axes.push([right, COUNTERCW]);
+        axes.push([bottomLayer, CLOCKWISE]);
+        axes.push([right, CLOCKWISE]);
+    }
+    makeMoves(axes, info, "Move the " + info.cube.str() +
+              " from the third layer to the second layer.");
 }
 
 function easeOfMUTCB(info) {
@@ -399,6 +525,20 @@ function determineFixTCB(info) {
     }
 }
 
+function determineFixSL(info) {
+    if (vec.eq(info.cube.ploc.pos, info.cube.home.pos)) {
+        if (palignedWithAxis(info.cube, info.topLayer)) {
+            return {done: true};
+        } else {
+            return fixMake(moveDownSL, 8, info);
+        }
+    } else if (feq(0, vec.dot(info.cube.ploc.pos, info.topLayer))) {
+        return fixMake(moveDownSL, 16, info);
+    } else {
+        return fixMake(moveUpSL, 8, info);
+    }
+}
+
 function findHome(pos, cubes) {
     var i,
         cube;
@@ -424,6 +564,9 @@ function Info(pos, state, topLayer, moves) {
     };
     this.onBottom = function (v) {
         return vec.dot(v, this.topLayer) < 0;
+    };
+    this.withoutTop = function(v) {
+        return vec.without(v, this.topLayer);
     };
 }
 
@@ -477,7 +620,6 @@ function topCorners(state, topLayer) {
         fix,
         fixes;
     var done = false;
-    var count = 0;
     while (!done) {
         done = true;
         fixes = new PriorityQueue();
@@ -495,8 +637,42 @@ function topCorners(state, topLayer) {
             var fixer = fixes.pop();
             fixer.go(fixer.info);
         }
-        count++;
-        done = done || (count > 5);
+
+    }
+    return stepMoves;
+}
+
+function secondLayer(state, topLayer) {
+    var stepMoves = [];
+    var axis0 = vec.getPerpendicular(topLayer);
+    var axis1 = vec.cross(topLayer, axis0);
+    var secondLayer = [vec.add(axis1, axis0),
+                       vec.sub(axis1, axis0),
+                       vec.sub(axis0, axis1),
+                       vec.muls(-1, vec.add(axis0, axis1))];
+    var i,
+        pos,
+        info,
+        fix,
+        fixes;
+    var done = false;
+    while (!done) {
+        done = true;
+        fixes = new PriorityQueue();
+        for (i = 0; i < secondLayer.length; i += 1) {
+            pos = secondLayer[i];
+            info = new Info(pos, state, topLayer, stepMoves);
+            info.numDone = i;
+            fix = determineFixSL(info);
+            if (!fix.done) {
+                done = false;
+                fixes.insert(fix.fixer, fix.ease);
+            }
+        }
+        if (!fixes.isEmpty()) {
+            var fixer = fixes.pop();
+            fixer.go(fixer.info);
+        }
     }
     return stepMoves;
 }
@@ -511,29 +687,78 @@ function topCorners(state, topLayer) {
 */
 
 function refine(state, moveset) {
-    var final = [];
+    var finalMoves = [];
     var i;
+    var j;
     var idx;
     var angle;
     var axis;
+    var done;
+    var move;
+    var nmove;
+    var actionsAfter;
     for (i = 0; i < moveset.length; i += 1) {
-        move = state.getMoveFromIdx(moveset[i]);
-        angle = move.angle;
-        axis = move.axis;
-        while ((i+1 < moveset.length) &&
-               vec.parallel(axis, state.getMoveFromIdx(moveset[i+1]).axis)) {
-            i += 1;
-            move = state.getMoveFromIdx(moveset[i]);
-            angle += move.angle;
-        }
-        angle = ((angle + Math.PI) % (2*Math.PI) - Math.PI);
-        if (feq(angle, -Math.PI))
-            angle = Math.PI;
-        if (!feq(angle, 0)) {
-            final.push(state.getIdxFromMove(move.axis, angle));
+        actionsAfter = [];
+        move = moveset[i];
+        if (move.hasOwnProperty("action")) {
+            finalMoves.push(move);
+        } else {
+            angle = move.angle;
+            axis = move.axis;
+            for (j = i+1; j < moveset.length; j += 1) {
+                nmove = moveset[j];
+                if (nmove.hasOwnProperty("action")) {
+                    actionsAfter.push(nmove);
+                } else {
+                    if (vec.parallel(move.axis, nmove.axis)) {
+                        angle += nmove.angle;
+                    } else {
+                        i = j-1; /* Start here next time */
+                        break;
+                    }
+                }
+            }
+            angle = ((angle + Math.PI) % (2*Math.PI) - Math.PI);
+            if (feq(angle, -Math.PI))
+                angle = Math.PI;
+            if (!feq(angle, 0)) {
+                idx = state.getIdxFromMove(axis, angle);
+                finalMoves.push(state.getMoveFromIdx(idx));
+            }
+            finalMoves.push.apply(finalMoves, actionsAfter);
         }
     }
-    return final;
+    return finalMoves;
+}
+
+function interlace(moves) {
+    var total = 0;
+    var soFar = 0;
+    for (var k = 0; k < moves.length; k++) {
+        if (!moves[k].hasOwnProperty("action"))
+            total++;
+    }
+    total = (total === 0) ? 1 : total;
+    var info = {
+        moves: [],
+        add: function(i) {
+            info.moves.push(moves[i]);
+            if (!moves[i].hasOwnProperty("action")) {
+                var percent = soFar / total;
+                info.moves.push({action: function () {
+                            cubr.updateProgressBar(percent);
+                    }});
+                soFar++;
+            }
+        }
+    }
+    for (var j = 0; j < moves.length; j += 1) {
+        info.add(j);
+    }
+    info.moves.push({"action": function () {
+                cubr.updateProgressBar(0);
+            }});
+    return info.moves;
 }
 
 function getSolution(state, topLayer) {
@@ -541,7 +766,8 @@ function getSolution(state, topLayer) {
     var finalMoves = [];
     var moveSet,
         steps = [topCross,
-                 topCorners],
+                  topCorners,
+                  secondLayer],
         step;
     topLayer = topLayer || [0, 1, 0];;
 
@@ -550,5 +776,5 @@ function getSolution(state, topLayer) {
         moveSet = step(state, topLayer);
         finalMoves.push.apply(finalMoves, moveSet);
     }
-    return refine(state, finalMoves);
+    return interlace(refine(state, finalMoves));
 }

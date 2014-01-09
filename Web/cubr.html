@@ -65,22 +65,42 @@
         </canvas>
         </div>
       </div>
+     <div class="status", id="statusbar">
+       <svg id="progressBarContainer" width="600" height="20">
+         <rect id="progressBar" width="0" height="20"/>
+       </svg>
+       <p id="statusBox"> </p>
+     </div>
       <div class="article tricol">
         <p>Cubr: The webcam-interactive rubik's cube solver</p>
       </div>
       <div class="article tricol">
-        <input id="reset"
-               type="button"
-               value="Reset"
-               onclick=cubr.reset()> </input><br>
+        <select id="shuffleLength">
+            <option value="50">50 Rotations</option>
+            <option value="200">200 Rotations</option>
+            <option value="1000">1000 Rotations</option>
+        </select>
         <input id="shuffle"
                type="button"
                value="Shuffle"
-               onclick=cubr.shuffle()> </input><br>
+               onclick=cubr.shuffle()> </input><br><hr>
+        <select id="tutorSelect">
+          <option value="off">No Tutorial</option>
+          <option value="on">Tutorial</option>
+        </select>
         <input id="solve"
                type="button"
                value="Solve"
-               onclick=cubr.solve()> </input><br>
+               onclick=cubr.solve()> </input> <br><hr>
+
+        <input id="pause"
+               type="button"
+               value="Pause"
+               onclick=cubr.togglePause()> </input>
+        <input id="reset"
+               type="button"
+               value="Reset"
+               onclick=cubr.reset()> </input><br><hr>
       </div>
       <div class="article tricol">
       </div>
