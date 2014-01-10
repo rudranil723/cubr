@@ -2,29 +2,6 @@ var CLOCKWISE = -Math.PI/2;
 var COUNTERCW =  Math.PI/2;
 var ONEEIGHTY =  Math.PI;
 
-function alignedWithAxis(cube, axis) {
-    return (afeq(vec.dot(axis, cube.ploc.orientation.up),
-                 vec.dot(axis, cube.home.orientation.up)) &&
-            afeq(vec.dot(axis, cube.ploc.orientation.right),
-                 vec.dot(axis, cube.home.orientation.right)));
-}
-
-function palignedWithAxis(cube, axis) {
-    return (feq(vec.dot(axis, cube.ploc.orientation.up),
-                 vec.dot(axis, cube.home.orientation.up)) &&
-            feq(vec.dot(axis, cube.ploc.orientation.right),
-                 vec.dot(axis, cube.home.orientation.right)));
-}
-
-function alignedWithAxes(cube, home, current) {
-    return (afeq(vec.dot(vec.unit(current), vec.unit(cube.ploc.orientation.up)),
-                 vec.dot(vec.unit(home), vec.unit(cube.home.orientation.up))) &&
-            afeq(vec.dot(vec.unit(current),
-                         vec.unit(cube.ploc.orientation.right)),
-                 vec.dot(vec.unit(home),
-                         vec.unit(cube.home.orientation.right))));
-}
-
 function currentAxis(cube, axis) {
     var upComp = vec.muls(vec.dot(axis, cube.home.orientation.up),
                           cube.ploc.orientation.up);
@@ -195,7 +172,7 @@ function secondLayerTXB(info) {
     var along = vec.without(current, against);
     var axes = [];
     var angle;
-    if (alignedWithAxes(info.cube, info.topLayer, along)) {
+    if (info.cube.alignedWithAxes(info.topLayer, along)) {
         /* Top face is along `along` axis. rotate about `against` */
         if (info.onTop(vec.cross(against, current))) {
             angle = COUNTERCW;
@@ -237,7 +214,7 @@ function easeOfSLTXB(info) {
     var desired = vec.without(info.cube.home.pos, info.topLayer);
     var against = vec.without(current, desired);
     var along = vec.without(current, against);
-    if ((!alignedWithAxes(info.cube, info.topLayer, along)) &&
+    if ((!info.cube.alignedWithAxes(info.topLayer, along)) &&
         vec.dot(along, desired) > 0)
         return 1;
     else {
@@ -492,7 +469,7 @@ function determineFixTXB(info) {
         }
     } else if (vec.dot(info.topLayer, info.cube.ploc.pos) > 0) {
         /* Elsewhere on top layer */
-        if (alignedWithAxis(info.cube, info.topLayer)) {
+        if (info.cube.alignedWithAxis(info.topLayer)) {
             return fixMake(relocateTopLayerTXB,
                            easeOfRLTLTXB(info), info);
         } else {
@@ -503,7 +480,7 @@ function determineFixTXB(info) {
         /* Second layer */
         return fixMake(secondLayerTXB, easeOfSLTXB(info), info);
     } else {
-        if (alignedWithAxis(info.cube, info.topLayer)) {
+        if (info.cube.alignedWithAxis(info.topLayer)) {
             return fixMake(relocateBottomLayerTXB, 3, info);
         } else {
             return fixMake(reorientBottomLayerTXB, 4, info);
@@ -513,7 +490,7 @@ function determineFixTXB(info) {
 
 function determineFixTCB(info) {
     if (vec.eq(info.cube.ploc.pos, info.cube.home.pos)) {
-        if (alignedWithAxis(info.cube, info.topLayer)) {
+        if (info.cube.alignedWithAxis(info.topLayer)) {
             return {done: true};
         } else {
             return fixMake(moveDownTCB, 3, info);
@@ -527,7 +504,7 @@ function determineFixTCB(info) {
 
 function determineFixSL(info) {
     if (vec.eq(info.cube.ploc.pos, info.cube.home.pos)) {
-        if (palignedWithAxis(info.cube, info.topLayer)) {
+        if (info.cube.palignedWithAxis(info.topLayer)) {
             return {done: true};
         } else {
             return fixMake(moveDownSL, 8, info);
@@ -551,6 +528,20 @@ function findHome(pos, cubes) {
     console.log(cubes);
     console.log(pos);
     throw "Cube not found: Home="+vec.toString(pos);
+}
+
+function findPloc(pos, cubes) {
+    var i,
+        cube;
+    for (i = 0; i < cubes.length; i += 1) {
+        cube = cubes[i];
+        if (vec.parallel(pos, cube.ploc.pos)) {
+            return cube;
+        }
+    }
+    console.log(cubes);
+    console.log(pos);
+    throw "Cube not found: Ploc="+vec.toString(pos);
 }
 
 
@@ -677,14 +668,166 @@ function secondLayer(state, topLayer) {
     return stepMoves;
 }
 
+function dsearch(state, depth, info) {
+    if (state.isSolved())
+        return true;
+    if (depth <= 0) {
+        return false;
+    } else {
+        for (var mKey in state.moves) {
+            if (state.moves.hasOwnProperty(mKey)) {
+                var move = state.moves[mKey];
+                state.makeMove(move);
+                if (dsearch(state, depth-1, info)) {
+                    info.moves.push(move);
+                    return;
+                }
+                else {
+                    state.unmakeMove(move);
+                }
+            }
+        }
+        return false
+    }
+}
 
-/*
-  var upIdx = rubik.getIdxFromMove([0, 1, 0], Math.PI/2);
-  var upMove = rubik.getMoveFromIdx(upIdx);
-  rubik.makeMove(upMove);
-  moveQueue.push(upIdx);
-  return moveQueue;
-*/
+function depthFirst(state) {
+    var MAX_DEPTH = 1;
+    var info = {moves: []};
+    dsearch(state, MAX_DEPTH, info);
+    return info.moves;
+}
+
+function thirdEdgeOrientation(state, topLayer) {
+    var stepMoves = [];
+    var done = false;
+    var pos;
+    var num = 10;
+    var bottomLayer = vec.unit(vec.muls(-1, topLayer));
+    var axis0 = vec.unit(vec.getPerpendicular(topLayer));
+    var axis1 = vec.unit(vec.cross(topLayer, axis0));
+    var thirdEdges = [vec.add(bottomLayer, axis0),
+                      vec.sub(bottomLayer, axis0),
+                      vec.add(bottomLayer, axis1),
+                      vec.sub(bottomLayer, axis1)];
+    while (!done && num > 0) {
+        num--;
+        var faceDowns = [];
+        for (var i = 0; i < thirdEdges.length; i++) {
+            pos = thirdEdges[i];
+            var cube = findHome(pos, state.cubes);
+            if (cube.alignedWithAxis(topLayer))
+                faceDowns.push(cube);
+        }
+        var info = new Info(pos, state, topLayer, stepMoves);
+        var axes = [];
+        var front,
+            right;;
+        switch (faceDowns.length) {
+        case 4:
+            done = true;
+            break;
+        case 2:
+            if (vec.parallels(info.withoutTop(faceDowns[0].ploc.pos),
+                              info.withoutTop(faceDowns[1].ploc.pos))) {
+                front = vec.unit(info.withoutTop(faceDowns[0].ploc.pos));
+            } else {
+                var first = info.withoutTop(faceDowns[0].ploc.pos);
+                var second = info.withoutTop(faceDowns[1].ploc.pos);
+                if (info.onTop(vec.cross(second, first))) {
+                    front = vec.muls(-1, second);
+                } else {
+                    front = vec.muls(-1, first);
+                }
+            }
+            break;
+        case 0:
+            front = axis0;
+            break;
+        default:
+            throw "Impossible cube!";
+        }
+        if (!done) {
+            right = vec.cross(front, bottomLayer);
+            axes.push([right, CLOCKWISE]);
+            axes.push([bottomLayer, CLOCKWISE]);
+            axes.push([front, CLOCKWISE]);
+            axes.push([bottomLayer, COUNTERCW]);
+            axes.push([front, COUNTERCW]);
+            axes.push([right, COUNTERCW]);
+            makeMoves(axes, info, "Fixing third layer edge orientation.");
+        }
+    }
+    return stepMoves;
+}
+
+function thirdCornerOrientation(state, topLayer) {
+    var stepMoves = [];
+    topLayer = vec.unit(topLayer);
+    var bottomLayer = vec.muls(-1, topLayer);
+    var axis0 = vec.getPerpendicular(topLayer);
+    var axis1 = vec.cross(topLayer, axis0);
+    var thirdCorners = [vec.add(bottomLayer, vec.add(axis0, axis1)),
+                        vec.add(bottomLayer, vec.sub(axis0, axis1)),
+                        vec.sub(bottomLayer, vec.sub(axis0, axis1)),
+                        vec.sub(bottomLayer, vec.add(axis0, axis1))];
+    var done = false;
+    var num = 10;
+    while (!done && num > 0) {
+        num--;
+        var facingDowns = [];
+        var facingOuts = [];
+        for (var i = 0; i < thirdCorners.length; i++) {
+            pos = thirdCorners[i];
+            var cube = findHome(pos, state.cubes);
+            if (cube.alignedWithAxis(topLayer))
+                facingDowns.push({pos: pos,
+                            ori: currentAxis(cube, bottomLayer)});
+            else
+                facingOuts.push({pos: pos,
+                            ori: currentAxis(cube, bottomLayer)});
+        }
+        var info = new Info(pos, state, topLayer, stepMoves);
+        var operator;
+        switch (facingDowns.length) {
+        case 4:
+            done = true;
+            break;
+        case 2:
+            var first = vec.unit(info.withoutTop(facingDowns[0].pos));
+            var second = vec.unit(info.withoutTop(facingDowns[1].pos));
+            if (vec.parallels(first, second)) {
+                operator = vec.add(first, vec.cross(first, bottomLayer));
+            } else {
+                if (vec.parallel(facingOuts[0].ori,
+                                 facingOuts[1].ori)) {
+                    operator = vec.cross(bottomLayer, facingOuts[0].ori);
+                } else {
+                    /* Done for now... */
+                }
+            }
+            break;
+        case 1:
+            var position = vec.unit(info.withoutTop(facingDowns[0].pos));
+            operator = vec.muls(-1, (vec.add(vec.position,
+                                             vec.cross(bottomLayer,
+                                                       position))));
+            break;
+        case 0:
+            break;
+        default:
+            throw "Impossible cube";
+        }
+        if (!done) {
+            var axes = [ [operator, COUNTERCW], [bottomLayer, COUNTERCW],
+                         [operator, CLOCKWISE], [bottomLayer, COUNTERCW],
+                         [operator, COUNTERCW], [bottomLayer, ONEEIGHTY],
+                         [operator, CLOCKWISE] ];
+            makeMoves(axes, info, "Fix third layer corner orientations.");
+        }
+    }
+    return stepMoves;
+}
 
 function refine(state, moveset) {
     var finalMoves = [];
@@ -718,9 +861,7 @@ function refine(state, moveset) {
                     }
                 }
             }
-            angle = ((angle + Math.PI) % (2*Math.PI) - Math.PI);
-            if (feq(angle, -Math.PI))
-                angle = Math.PI;
+            angle = principal_value(angle);
             if (!feq(angle, 0)) {
                 idx = state.getIdxFromMove(axis, angle);
                 finalMoves.push(state.getMoveFromIdx(idx));
@@ -766,8 +907,9 @@ function getSolution(state, topLayer) {
     var finalMoves = [];
     var moveSet,
         steps = [topCross,
-                  topCorners,
-                  secondLayer],
+                 topCorners,
+                 secondLayer,
+                 thirdEdgeOrientation],
         step;
     topLayer = topLayer || [0, 1, 0];;
 

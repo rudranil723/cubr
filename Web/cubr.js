@@ -13,6 +13,21 @@ var KEYCODES = {
     two: 50
 };
 
+var AXES = [
+            [0, 0, 1],
+            [0, 0, -1],
+            [0, 1, 0],
+            [0, -1, 0],
+            [1, 0, 0],
+            [-1, 0, 0]
+            ];
+
+function principal_value(angle) {
+    angle = ((angle + Math.PI) % (2*Math.PI) - Math.PI);
+    if (feq(angle, -Math.PI))
+        angle = Math.PI;
+    return angle;
+}
 
 function RenderUtilities() {
     function clearAll(gl) {
@@ -317,6 +332,48 @@ function Cube(sceneData, x, y, z, len, up, right, cols, set, atHome,
         ploc.orientation = {up: copyArray(loc.orientation.up),
                             right: copyArray(loc.orientation.right)};
 
+    }
+
+    this.alignedWithAxis = function (axis) {
+        return (afeq(vec.dot(axis, ploc.orientation.up),
+                     vec.dot(axis, home.orientation.up)) &&
+                afeq(vec.dot(axis, ploc.orientation.right),
+                     vec.dot(axis, home.orientation.right)));
+    };
+
+    this.palignedWithAxis = function (axis) {
+        return (feq(vec.dot(axis, this.ploc.orientation.up),
+                    vec.dot(axis, this.home.orientation.up)) &&
+                feq(vec.dot(axis, this.ploc.orientation.right),
+                    vec.dot(axis, this.home.orientation.right)));
+    }
+
+    this.alignedWithAxes = function (home, current) {
+        return (afeq(vec.dot(vec.unit(current),
+                             vec.unit(this.ploc.orientation.up)),
+                     vec.dot(vec.unit(home),
+                             vec.unit(this.home.orientation.up))) &&
+                afeq(vec.dot(vec.unit(current),
+                             vec.unit(this.ploc.orientation.right)),
+                     vec.dot(vec.unit(home),
+                             vec.unit(this.home.orientation.right))));
+    }
+
+    this.isHome = function () {
+        if (!(vec.isZero(this.home.pos) && vec.isZero(this.ploc.pos)) &&
+            !vec.parallel(this.home.pos, this.ploc.pos))
+            return false;
+        if (!vec.parallel(this.home.orientation.up, this.ploc.orientation.up))
+            return false;
+        if (!vec.parallel(this.home.orientation.right,
+                          this.ploc.orientation.right))
+            return false;
+        return true;
+        for (var i = 0; i < 6; i += 1) {
+            if (colors[i] !== -1 && !this.alignedWithAxis(AXES[i]))
+                return false;
+        }
+        return true;
     }
 
     function returnHome() {
@@ -801,6 +858,19 @@ function Cubelets(set) {
         }
     }
 
+    function opposite(move, state) {
+        if (move.hasOwnProperty("action")) {
+            return move;
+        }
+        else {
+            var angle = move.angle;
+            var axis = move.axis;
+            angle *= -1;
+            angle = principal_value(angle);
+            return state.getMoveFromIdx(state.getIdxFromMove(axis, angle));
+        }
+    }
+
     function getState(moves) {
         var i,
             cube,
@@ -813,11 +883,23 @@ function Cubelets(set) {
         state.makeMove = function (move) {
             return makeMoveOnState(state.cubes, move);
         };
+        state.unmakeMove = function (move) {
+            return makeMoveOnState(state.cubes, opposite(move, state));
+        };
         state.getMoveFromIdx = function(moveIdx) {
             return getMove(moves, moveIdx);
-        }
+        };
+        state.moves = moves;
         state.getIdxFromMove = function (axis, angle) {
             return getIdx(moves, axis, angle);
+        };
+        state.isSolved = function () {
+            for (var k = 0; k < cubes.length; k += 1) {
+                var cube = cubes[k];
+                if (!cube.isHome())
+                    return false;
+            }
+            return true;
         };
         return state;
     }
@@ -1399,6 +1481,12 @@ function Cubr() {
             settings.paused = true;
             updatePauseButton();
         }
+    };
+    this.slowdown = function () {
+        settings.speed = min(settings.speed + 2, 30);
+    };
+    this.speedup = function() {
+        settings.speed = max(settings.speed - 2, 1);
     };
 }
 var cubr = new Cubr();
