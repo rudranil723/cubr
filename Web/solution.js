@@ -698,6 +698,389 @@ function depthFirst(state) {
     return info.moves;
 }
 
+function thirdCornerLocation(state, topLayer) {
+    var stepMoves = [];
+    var done = false;
+    var pos;
+    var num = 10;
+    var bottomLayer = vec.unit(vec.muls(-1, topLayer));
+    var axis0 = vec.unit(vec.getPerpendicular(topLayer));
+    var axis1 = vec.unit(vec.cross(topLayer, axis0));
+    var thirdCorners = [vec.add(bottomLayer, vec.add(axis0, axis1)),
+                        vec.add(bottomLayer, vec.sub(axis0, axis1)),
+                        vec.sub(bottomLayer, vec.sub(axis0, axis1)),
+                        vec.sub(bottomLayer, vec.add(axis0, axis1))];
+    var cube;
+    var angle_away;
+    var cubelets = [];
+    for (var i = 0; i < thirdCorners.length; i++) {
+        pos = thirdCorners[i];
+        cube = findHome(pos, state.cubes);
+        cubelets.push(cube);
+    }
+    while (!done && num > 0) {
+        num--;
+        var infos = [];
+        for (var i = 0; i < cubelets.length; i++) {
+            cube = cubelets[i];
+            var info = new Info(cube.home.pos, state, topLayer, stepMoves);
+            angle_away = vec.angleBetween(info.withoutTop(cube.home.pos),
+                                          info.withoutTop(cube.ploc.pos));
+            info.angle = angle_away;
+            infos.push(info);
+        }
+        /* Check if done */
+        done = true;
+        for (var i = 0; i < infos.length; i++) {
+            info = infos[i];
+            if (!feq(info.angle,0)) {
+                done = false;
+                break;
+            }
+        }
+        if (done) {
+            break;
+        }
+        /* Check if we have optimal rotation */
+        modeAngle = null;
+        modeAngleCount = -1;
+        zeroCount = 0;
+        for (var i = 0; i < infos.length; i++) {
+            var angle = infos[i].angle;
+            if (feq(angle, 0))
+                zeroCount++;
+            var count = 0;
+            for (var j = 0; j < infos.length; j++) {
+                var other_angle = infos[j].angle;
+                if (angle === other_angle) {
+                    count++;
+                }
+            }
+            if (count > modeAngleCount) {
+                modeAngleCount = count;
+                modeAngle = angle;
+            }
+        }
+        var axes = [];
+        if (zeroCount < modeAngleCount) {
+            /* Rotate to optimal rotation */
+            axes.push([bottomLayer, modeAngle]);
+        } else {
+            var incorrects = [];
+            for (var i = 0; i < infos.length; i++) {
+                if (!feq(infos[i].angle,0)) {
+                    incorrects.push(infos[i]);
+                }
+            }
+            switch (incorrects.length) {
+            case 4:
+                throw "Already done with this step!";
+                break;
+            case 3:
+                throw "Invalid cube";
+                break;
+            case 2:
+                var first = incorrects[0];
+                var second = incorrects[1];
+                var first_ax = info.withoutTop(first.cube.ploc.pos);
+                var second_ax = info.withoutTop(second.cube.ploc.pos);
+                var fronts = [];
+                if (vec.parallels(first_ax, second_ax)) {
+                    var perp = vec.unit(vec.cross(bottomLayer, first_ax));
+                    var front0 = vec.proj(perp, axis0);
+                    var front1 = vec.proj(perp, axis1);
+                    fronts.push(front0);
+                    fronts.push(front1);
+                    fronts.push(front0);
+                } else {
+                    fronts.push(vec.unit(vec.add(vec.unit(first_ax),
+                                                 vec.unit(second_ax))));
+                }
+                for (var i = 0; i < fronts.length; i++) {
+                    var front = fronts[i];
+                    var left = vec.cross(front, bottomLayer);
+                    axes.push([left, COUNTERCW]);        // L'
+                    axes.push([bottomLayer, COUNTERCW]); // U'
+                    axes.push([left, CLOCKWISE]);        // L
+                    axes.push([front, CLOCKWISE]);       // F
+                    axes.push([bottomLayer, CLOCKWISE]); // U
+                    axes.push([front, COUNTERCW]);       // F'
+                    axes.push([left, COUNTERCW]);        // L'
+                    axes.push([bottomLayer, CLOCKWISE]); // U
+                    axes.push([left, CLOCKWISE]);        // L
+                    axes.push([bottomLayer, ONEEIGHTY]); // U2
+                }
+                break;
+            case 1:
+                console.log("One corner in correct location.");
+                break;
+            case 0:
+                throw "No corners - rotation should have solved this!";
+                break;
+            default:
+                throw "Invalid number of corners.";
+                break;
+            }
+        }
+        makeMoves(axes, infos[0], "Fixing third layer corner permutation.");
+    }
+    return stepMoves;
+}
+
+function thirdCornerOrientation(state, topLayer) {
+    var stepMoves = [];
+    var done = false;
+    var pos;
+    var num = 10;
+    var bottomLayer = vec.unit(vec.muls(-1, topLayer));
+    var axis0 = vec.unit(vec.getPerpendicular(topLayer));
+    var axis1 = vec.unit(vec.cross(topLayer, axis0));
+    var thirdCorners = [vec.add(bottomLayer, vec.add(axis0, axis1)),
+                        vec.add(bottomLayer, vec.sub(axis0, axis1)),
+                        vec.sub(bottomLayer, vec.sub(axis0, axis1)),
+                        vec.sub(bottomLayer, vec.add(axis0, axis1))];
+    var cube;
+    var angle_away;
+    var cubelets = [];
+    for (var i = 0; i < thirdCorners.length; i++) {
+        pos = thirdCorners[i];
+        cube = findHome(pos, state.cubes);
+        cubelets.push(cube);
+    }
+    while (!done && num > 0) {
+        num--;
+        var infos = [];
+        for (var i = 0; i < cubelets.length; i++) {
+            cube = cubelets[i];
+            var info = new Info(cube.home.pos, state, topLayer, stepMoves);
+            infos.push(info);
+        }
+        /* Check if done */
+        var incorrects = [];
+        var corrects = [];
+        for (var i = 0; i < infos.length; i++) {
+            info = infos[i];
+            if (info.cube.alignedWithAxis(info.topLayer)) {
+                corrects.push(info);
+            } else {
+                incorrects.push(info);
+            }
+        }
+        var axes = [];
+        var rotations = [];
+        switch (incorrects.length) {
+        case 4:
+            rotations.push([CLOCKWISE, axis0]);
+            break;
+        case 3:
+            var correct_pos = vec.unit(info.withoutTop(corrects[0].cube.ploc.pos));
+            var axis_to_right = vec.unit(vec.add(correct_pos,
+                                                 vec.cross(bottomLayer, correct_pos)));
+            var axis_to_left = vec.unit(vec.cross(axis_to_right, bottomLayer));
+            var right_of = findHome(vec.add(bottomLayer, vec.add(axis_to_right,
+                                    vec.muls(-1, axis_to_left))), state.cubes);
+            var left_of = findHome(vec.add(bottomLayer, vec.add(axis_to_left,
+                                    vec.muls(-1, axis_to_right))), state.cubes);
+            var needsCW = vec.dot(right_of.home.pos, 
+                                  vec.cross(currentAxis(right_of, bottomLayer), bottomLayer))<0;
+
+            if (needsCW) {
+                /* Counterclockwise */
+                rotations.push([CLOCKWISE, axis_to_left]);
+            } else {
+                rotations.push([COUNTERCW, axis_to_right])
+            }
+            break;
+        case 2:
+            /* This is a two-step fix. */
+            var first = info.withoutTop(incorrects[0].cube.ploc.pos);
+            var second = info.withoutTop(incorrects[1].cube.ploc.pos);
+            var axis_right_of_first = vec.unit(vec.add(first,vec.cross(bottomLayer,first)));
+            var axis_left_of_first = vec.unit(vec.add(first,vec.cross(first,bottomLayer)));
+            var axis_right_of_second = vec.unit(vec.add(second,vec.cross(bottomLayer,second)));
+            var axis_left_of_second = vec.unit(vec.add(second,vec.cross(second,bottomLayer)));
+            var first_cube = findHome(vec.add(bottomLayer, vec.add(axis_left_of_first,
+                                              axis_right_of_first)), state.cubes);
+            var second_cube = findHome(vec.add(bottomLayer, vec.add(axis_left_of_second,
+                                              axis_right_of_second)), state.cubes);
+            var firstNeedsCW = vec.dot(first_cube.home.pos, 
+                                  vec.cross(currentAxis(first_cube, bottomLayer), bottomLayer))<0;
+            var secondNeedsCW = vec.dot(second_cube.home.pos, 
+                                  vec.cross(currentAxis(second_cube, bottomLayer), bottomLayer))<0;
+
+            if (firstNeedsCW) {
+                /* first is front-right */
+                rotations.push([COUNTERCW, axis_left_of_first]);
+            } else {
+                rotations.push([CLOCKWISE, axis_right_of_first]);
+            }
+            if (secondNeedsCW) {
+                rotations.push([COUNTERCW, axis_left_of_second]);
+            } else {
+                rotations.push([CLOCKWISE, axis_right_of_second]);
+            }
+            break;
+        case 1:
+            /* this is impossible */
+            break;
+        case 0:
+            done = true;
+            break;
+        default:
+            throw "Invalid number of corners.";
+            break;
+        }
+        if (!done) {
+            for (var i = 0; i < rotations.length; i++) {
+                var angle = rotations[i][0];
+                var front = rotations[i][1];
+                var up = bottomLayer;
+                var right = vec.cross(up, front);
+                var left = vec.cross(front, up);
+                if (feq(angle,CLOCKWISE)) {
+                    /* R U R’ U R U2 R’ U2 */
+                    axes.push([right, CLOCKWISE]);
+                    axes.push([up, CLOCKWISE]);
+                    axes.push([right, COUNTERCW]);
+                    axes.push([up, CLOCKWISE]);
+                    axes.push([right, CLOCKWISE]);
+                    axes.push([up, ONEEIGHTY]);
+                    axes.push([right, COUNTERCW]);
+                    axes.push([up, ONEEIGHTY]);
+                } else if (feq(angle,COUNTERCW)) {
+                    /* L’ U’ L U’ L’ U2 L U2 */
+                    axes.push([left, COUNTERCW]);
+                    axes.push([up, COUNTERCW]);
+                    axes.push([left, CLOCKWISE]);
+                    axes.push([up, COUNTERCW]);
+                    axes.push([left, COUNTERCW]);
+                    axes.push([up, ONEEIGHTY]);
+                    axes.push([left, CLOCKWISE]);
+                    axes.push([up, ONEEIGHTY]);
+                }
+            }
+            makeMoves(axes, infos[0], "Fixing third layer corner orientation.");
+        }
+    }
+    return stepMoves;
+}
+
+function thirdEdgeLocation(state, topLayer) {
+    var stepMoves = [];
+    var done = false;
+    var pos;
+    var num = 10;
+    var bottomLayer = vec.unit(vec.muls(-1, topLayer));
+    var axis0 = vec.unit(vec.getPerpendicular(topLayer));
+    var axis1 = vec.unit(vec.cross(topLayer, axis0));
+    var thirdEdges = [vec.add(bottomLayer, axis0),
+                      vec.add(bottomLayer, axis1),
+                      vec.sub(bottomLayer, axis0),
+                      vec.sub(bottomLayer, axis1)];
+    var cube;
+    var cubelets = [];
+    for (var i = 0; i < thirdEdges.length; i++) {
+        pos = thirdEdges[i];
+        cube = findHome(pos, state.cubes);
+        cubelets.push(cube);
+    }
+    while (!done && num > 0) {
+        num--;
+        var infos = [];
+        for (var i = 0; i < cubelets.length; i++) {
+            cube = cubelets[i];
+            var info = new Info(cube.home.pos, state, topLayer, stepMoves);
+            infos.push(info);
+        }
+        /* Check if done */
+        var incorrects = [];
+        var corrects = [];
+        for (var i = 0; i < infos.length; i++) {
+            info = infos[i];
+            if (vec.eq(info.cube.ploc.pos,
+                       info.cube.home.pos)) {
+                corrects.push(info);
+            } else {
+                incorrects.push(info);
+            }
+        }
+        var axes = [];
+        var rotations = [];
+        switch (incorrects.length) {
+        case 4:
+            console.log("All four edges dislocated.");
+            rotations.push([CLOCKWISE, axis0]);
+            break;
+        case 3:
+            console.log("Three edges dislocated.");
+            var correct_pos = vec.unit(info.withoutTop(corrects[0].cube.ploc.pos));
+            /* This will be the axis. Now determine clockwise or countercw */
+            var direction;
+            var across = vec.muls(-1, correct_pos);
+            var opposite = findPloc(vec.add(bottomLayer, across), state.cubes);
+            var displacement = vec.sub(opposite.home.pos, opposite.ploc.pos);
+            var needs_cw = vec.dot(bottomLayer, vec.cross(across, displacement))<0;
+            if (needs_cw)
+                direction = CLOCKWISE;
+            else
+                direction = COUNTERCW;
+            rotations.push([direction, correct_pos]);
+            break;
+        case 2:
+            throw "Two edges dislocated.";
+            /* This is impossible */
+        case 1:
+            throw "One edges dislocated.";
+            /* this is impossible */
+            break;
+        case 0:
+            done = true;
+            break;
+        default:
+            throw "Invalid number of edges.";
+            break;
+        }
+        if (!done) {
+            for (var i = 0; i < rotations.length; i++) {
+                var angle = rotations[i][0];
+                var front = rotations[i][1];
+                var up = bottomLayer;
+                var right = vec.cross(up, front);
+                var left = vec.cross(front, up);
+                if (feq(angle,CLOCKWISE)) {
+                    /* L R’ F L’ R U2 L R’ F L’ R */
+                    axes.push([left, CLOCKWISE]);
+                    axes.push([right, COUNTERCW]);
+                    axes.push([front, CLOCKWISE]);
+                    axes.push([left, COUNTERCW]);
+                    axes.push([right, CLOCKWISE]);
+                    axes.push([up, ONEEIGHTY]);
+                    axes.push([left, CLOCKWISE]);
+                    axes.push([right, COUNTERCW]);
+                    axes.push([front, CLOCKWISE]);
+                    axes.push([left, COUNTERCW]);
+                    axes.push([right, CLOCKWISE]);
+                } else if (feq(angle,COUNTERCW)) {
+                    /* L R’ F’ L’ R U2 L R’ F’ L’ R */
+                    axes.push([left, CLOCKWISE]);
+                    axes.push([right, COUNTERCW]);
+                    axes.push([front, COUNTERCW]);
+                    axes.push([left, COUNTERCW]);
+                    axes.push([right, CLOCKWISE]);
+                    axes.push([up, ONEEIGHTY]);
+                    axes.push([left, CLOCKWISE]);
+                    axes.push([right, COUNTERCW]);
+                    axes.push([front, COUNTERCW]);
+                    axes.push([left, COUNTERCW]);
+                    axes.push([right, CLOCKWISE]);
+                }
+            }
+            makeMoves(axes, infos[0], "Fixing third layer edge permutation.");
+        }
+    }
+    return stepMoves;
+}
+
 function thirdEdgeOrientation(state, topLayer) {
     var stepMoves = [];
     var done = false;
@@ -707,123 +1090,126 @@ function thirdEdgeOrientation(state, topLayer) {
     var axis0 = vec.unit(vec.getPerpendicular(topLayer));
     var axis1 = vec.unit(vec.cross(topLayer, axis0));
     var thirdEdges = [vec.add(bottomLayer, axis0),
-                      vec.sub(bottomLayer, axis0),
                       vec.add(bottomLayer, axis1),
+                      vec.sub(bottomLayer, axis0),
                       vec.sub(bottomLayer, axis1)];
-    while (!done && num > 0) {
-        num--;
-        var faceDowns = [];
-        for (var i = 0; i < thirdEdges.length; i++) {
-            pos = thirdEdges[i];
-            var cube = findHome(pos, state.cubes);
-            if (cube.alignedWithAxis(topLayer))
-                faceDowns.push(cube);
-        }
-        var info = new Info(pos, state, topLayer, stepMoves);
-        var axes = [];
-        var front,
-            right;;
-        switch (faceDowns.length) {
-        case 4:
-            done = true;
-            break;
-        case 2:
-            if (vec.parallels(info.withoutTop(faceDowns[0].ploc.pos),
-                              info.withoutTop(faceDowns[1].ploc.pos))) {
-                front = vec.unit(info.withoutTop(faceDowns[0].ploc.pos));
-            } else {
-                var first = info.withoutTop(faceDowns[0].ploc.pos);
-                var second = info.withoutTop(faceDowns[1].ploc.pos);
-                if (info.onTop(vec.cross(second, first))) {
-                    front = vec.muls(-1, second);
-                } else {
-                    front = vec.muls(-1, first);
-                }
-            }
-            break;
-        case 0:
-            front = axis0;
-            break;
-        default:
-            throw "Impossible cube!";
-        }
-        if (!done) {
-            right = vec.cross(front, bottomLayer);
-            axes.push([right, CLOCKWISE]);
-            axes.push([bottomLayer, CLOCKWISE]);
-            axes.push([front, CLOCKWISE]);
-            axes.push([bottomLayer, COUNTERCW]);
-            axes.push([front, COUNTERCW]);
-            axes.push([right, COUNTERCW]);
-            makeMoves(axes, info, "Fixing third layer edge orientation.");
-        }
+    var cube;
+    var cubelets = [];
+    for (var i = 0; i < thirdEdges.length; i++) {
+        pos = thirdEdges[i];
+        cube = findHome(pos, state.cubes);
+        cubelets.push(cube);
     }
-    return stepMoves;
-}
-
-function thirdCornerOrientation(state, topLayer) {
-    var stepMoves = [];
-    topLayer = vec.unit(topLayer);
-    var bottomLayer = vec.muls(-1, topLayer);
-    var axis0 = vec.getPerpendicular(topLayer);
-    var axis1 = vec.cross(topLayer, axis0);
-    var thirdCorners = [vec.add(bottomLayer, vec.add(axis0, axis1)),
-                        vec.add(bottomLayer, vec.sub(axis0, axis1)),
-                        vec.sub(bottomLayer, vec.sub(axis0, axis1)),
-                        vec.sub(bottomLayer, vec.add(axis0, axis1))];
-    var done = false;
-    var num = 10;
     while (!done && num > 0) {
         num--;
-        var facingDowns = [];
-        var facingOuts = [];
-        for (var i = 0; i < thirdCorners.length; i++) {
-            pos = thirdCorners[i];
-            var cube = findHome(pos, state.cubes);
-            if (cube.alignedWithAxis(topLayer))
-                facingDowns.push({pos: pos,
-                            ori: currentAxis(cube, bottomLayer)});
-            else
-                facingOuts.push({pos: pos,
-                            ori: currentAxis(cube, bottomLayer)});
+        var infos = [];
+        for (var i = 0; i < cubelets.length; i++) {
+            cube = cubelets[i];
+            var info = new Info(cube.home.pos, state, topLayer, stepMoves);
+            infos.push(info);
         }
-        var info = new Info(pos, state, topLayer, stepMoves);
-        var operator;
-        switch (facingDowns.length) {
+        /* Check if done */
+        var incorrects = [];
+        var corrects = [];
+        for (var i = 0; i < infos.length; i++) {
+            info = infos[i];
+            if (info.cube.alignedWithAxis(info.topLayer)) {
+                corrects.push(info);
+            } else {
+                incorrects.push(info);
+            }
+        }
+        var axes = [];
+        var rotations = [];
+        switch (incorrects.length) {
         case 4:
-            done = true;
+            console.log("All four edges disoriented.");
+            rotations.push([true, axis0]);
+            break;
+        case 3:
+            throw "Three edges disoriented";
             break;
         case 2:
-            var first = vec.unit(info.withoutTop(facingDowns[0].pos));
-            var second = vec.unit(info.withoutTop(facingDowns[1].pos));
-            if (vec.parallels(first, second)) {
-                operator = vec.add(first, vec.cross(first, bottomLayer));
+            console.log("Two edges disoriented.")
+            var first_cube = corrects[0];
+            var second_cube = corrects[1];
+            var first_axis = vec.unit(info.withoutTop(first_cube.cube.ploc.pos));
+            var second_axis = vec.unit(info.withoutTop(second_cube.cube.ploc.pos));
+            if (vec.parallels(first_axis, second_axis)) {
+                /* H pattern */
+                rotations.push([true, first_axis]);
             } else {
-                if (vec.parallel(facingOuts[0].ori,
-                                 facingOuts[1].ori)) {
-                    operator = vec.cross(bottomLayer, facingOuts[0].ori);
+                /* "Fisheye" pattern */
+                if (vec.dot(bottomLayer,vec.cross(first_axis,second_axis))>0) {
+                    rotations.push([false, vec.muls(-1,second_axis)]);
                 } else {
-                    /* Done for now... */
+                    rotations.push([false, vec.muls(-1,first_axis)]);
                 }
             }
             break;
         case 1:
-            var position = vec.unit(info.withoutTop(facingDowns[0].pos));
-            operator = vec.muls(-1, (vec.add(vec.position,
-                                             vec.cross(bottomLayer,
-                                                       position))));
+            throw "One edge disoriented.";
+            /* this is impossible */
             break;
         case 0:
+            done = true;
             break;
         default:
-            throw "Impossible cube";
+            throw "Invalid number of edges.";
+            break;
         }
         if (!done) {
-            var axes = [ [operator, COUNTERCW], [bottomLayer, COUNTERCW],
-                         [operator, CLOCKWISE], [bottomLayer, COUNTERCW],
-                         [operator, COUNTERCW], [bottomLayer, ONEEIGHTY],
-                         [operator, CLOCKWISE] ];
-            makeMoves(axes, info, "Fix third layer corner orientations.");
+            for (var i = 0; i < rotations.length; i++) {
+                var h_pattern = rotations[i][0];
+                var front = rotations[i][1];
+                var back = vec.muls(-1,front);
+                var up = bottomLayer;
+                var down = vec.muls(-1,up);
+                var right = vec.cross(up, front);
+                var left = vec.cross(front, up);
+                if (h_pattern) {
+                    /* R’ U’ D B2 D2 U2 F’ U2 
+                     * F D2 U2 B2 U D’ R U2 */
+                     axes.push([right, COUNTERCW]); // R'
+                     axes.push([up, COUNTERCW]);    // U'
+                     axes.push([down, CLOCKWISE]);  // D
+                     axes.push([back, ONEEIGHTY]);  // B2
+                     axes.push([down, ONEEIGHTY]);  // D2
+                     axes.push([up, ONEEIGHTY]);    // U2
+                     axes.push([front, COUNTERCW]); // F'
+                     axes.push([up, ONEEIGHTY]);    // U2
+                     axes.push([front, CLOCKWISE]); // F
+                     axes.push([down, ONEEIGHTY]);  // D2
+                     axes.push([up, ONEEIGHTY]);    // U2
+                     axes.push([back, ONEEIGHTY]);  // B2
+                     axes.push([up, CLOCKWISE]);    // U
+                     axes.push([down, COUNTERCW]);  // D'
+                     axes.push([right, CLOCKWISE]); // R
+                     axes.push([up, ONEEIGHTY]);    // U2
+                } else {
+                    /* F U’ D B2 D2 U2 F’ U2 
+                     * F D2 U2 B2 U D’ R U2 R’ F’ */
+                     axes.push([front, CLOCKWISE]); // F
+                     axes.push([up, COUNTERCW]);    // U'
+                     axes.push([down, CLOCKWISE]);  // D
+                     axes.push([back, ONEEIGHTY]);  // B2
+                     axes.push([down, ONEEIGHTY]);  // D2
+                     axes.push([up, ONEEIGHTY]);    // U2
+                     axes.push([front, COUNTERCW]); // F'
+                     axes.push([up, ONEEIGHTY]);    // U2
+                     axes.push([front, CLOCKWISE]); // F
+                     axes.push([down, ONEEIGHTY]);  // D2
+                     axes.push([up, ONEEIGHTY]);    // U2
+                     axes.push([back, ONEEIGHTY]);  // B2
+                     axes.push([up, CLOCKWISE]);    // U
+                     axes.push([down, COUNTERCW]);  // D'
+                     axes.push([right, CLOCKWISE]); // R
+                     axes.push([up, ONEEIGHTY]);    // U2
+                     axes.push([right, COUNTERCW]); // R'
+                     axes.push([front, COUNTERCW]); // F'
+                }
+            }
+            makeMoves(axes, infos[0], "Fixing third layer edge orientation.");
         }
     }
     return stepMoves;
@@ -909,9 +1295,13 @@ function getSolution(state, topLayer) {
         steps = [topCross,
                  topCorners,
                  secondLayer,
-                 thirdEdgeOrientation],
+                 thirdCornerLocation,
+                 thirdCornerOrientation,
+                 thirdEdgeLocation,
+                 thirdEdgeOrientation
+                 ],
         step;
-    topLayer = topLayer || [0, 1, 0];;
+    topLayer = topLayer || [0, 1, 0];
 
     for (i = 0; i < steps.length; i += 1) {
         step = steps[i];

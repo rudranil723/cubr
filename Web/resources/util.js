@@ -205,6 +205,14 @@ var vec = {
             return [1, 0, 0];
         else
             return crossed;
+    },
+    angleBetween: function (A, B) {
+        /* (A dot B) = |A||B|cos(theta) */
+        if (vec.isZero(A) || vec.isZero(B)) {
+            return 0;
+        } else {
+            return Math.acos(vec.dot(A,B)/(vec.mag(A)*vec.mag(B)));
+        }
     }
 };
 
