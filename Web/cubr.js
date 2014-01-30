@@ -100,7 +100,6 @@ function RenderUtilities() {
         }
         return shader;
     };
-
     this.clearAll = clearAll;
     this.initShaders = initShaders;
 }
@@ -203,6 +202,18 @@ function SimpleScene(canvasID) {
         var gl,
             i,
             sceneObject;
+        /*var size = getWindowSize();
+        size.width *= settings.glcanvas.widthFraction;
+        size.height *= settings.glcanvas.heightFraction;
+        size.width = min(size.width, settings.webcam.maxWidth);
+        size.height = min(size.height, settings.webcam.maxHeight);
+        if (data.canva.width != size.width ||
+            data.canva.height != size.height)
+        {
+            data.canva.width = size.width;
+            data.canva.height = size.height;
+        }*/
+
         gl = data.gl;
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // Establish the perspective with which we want to view the
@@ -223,7 +234,7 @@ function SimpleScene(canvasID) {
         rendUtil.initShaders(data);
         data.loadIdentity();
         data.mvPushMatrix();
-        data.mvTranslate([0, 0, -20.0]);
+        data.mvTranslate([0, 0, -15.5]);
     }
 
     init();
@@ -1310,11 +1321,144 @@ function getTutorial() {
     return tut.options[tut.selectedIndex].value === "on";
 }
 
+
+function getWindowSize() {
+    return {"width": window.innerWidth,
+            "height": window.innerHeight};
+}
+
+function WebcamInterface(canvasID, settings) {
+    var settings = settings;
+    var canvas = document.getElementById(canvasID);
+    var active = false;
+    var cameraUp = false;
+    var hovering = false;
+    var size;
+
+    function analyzeFrame(b64) {
+        var img = new Image();
+        var context = canvas.getContext('2d');
+        img.onload = function () {
+            context.drawImage(this, 0, 0, canvas.width, canvas.height);
+        }
+        img.src = "data:image/jpeg;base64," + b64;
+    }
+
+    function onError(errorId,errorMsg) {
+        alert(errorMsg);
+    }
+    function changeCamera() {
+        $.scriptcam.changeCamera($('#cameraNames').val());
+    }
+    function onWebcamReady(cameraNames,camera,microphoneNames,
+                           microphone,volume) {
+        cameraUp = true;
+        $.each(cameraNames, function(index, text) {
+                $('#cameraNames')
+                    .append( $('<option></option>').val(index).html(text) )
+                    });
+        $('#cameraNames').val(camera);
+    }
+    function activate() {
+        active = true;
+        $("#webcam").scriptcam({
+                cornerRadius:0,
+                    width: 640,
+                    height: 480,
+                    useMicrophone: false,
+                    onError:onError,
+                    onWebcamReady:onWebcamReady
+                    });
+        document.getElementById("webcam").height = 0;
+    }
+
+    function getCanvasSize(canvas, settings) {
+       var size = getWindowSize();
+       size.width *= settings.webcam.widthFraction;
+       size.height *= settings.webcam.heightFraction;
+       size.width = min(size.width, settings.webcam.maxWidth);
+       size.height = min(size.height, settings.webcam.maxHeight);
+       return size;
+    }
+
+    function drawIdle() {
+        var context = canvas.getContext('2d');
+        size = getCanvasSize(canvas, settings);
+        if (context.canvas.width != size.width ||
+            context.canvas.height != size.height) {
+            context.canvas.width = size.width;
+            context.canvas.height = size.height;
+        }
+        context.clearRect(0, 0, size.width, size.height);
+        context.fillStyle = "black";
+        context.fillRect(0, 0, size.width, size.height);
+        if (hovering) {
+            context.fillStyle = "#333333";
+            context.fillRect(size.width/2-100,size.height/2-30,200,50);
+        }
+        context.shadowColor = "transparent";
+        context.fillStyle = "white";
+        context.font = "bold 16px Arial";
+        context.textAlign = "center";
+        context.fillText("Click to open webcam", size.width/2, size.height/2);
+    }
+
+    function drawLoading() {
+        var context = canvas.getContext('2d');
+        size = getCanvasSize(canvas, settings);
+        if (context.canvas.width != size.width ||
+            context.canvas.height != size.height) {
+            context.canvas.width = size.width;
+            context.canvas.height = size.height;
+        }
+        context.clearRect(0, 0, size.width, size.height);
+        context.fillStyle = "black";
+        context.fillRect(0, 0, size.width, size.height);
+        context.shadowColor = "transparent";
+        context.fillStyle = "white";
+        context.font = "bold 16px Arial";
+        context.textAlign = "center";
+        context.fillText("Waiting for webcam...", size.width/2, size.height/2);
+    }
+
+    function update() {
+        if (active) {
+            if (cameraUp) {
+                /* Only do this every 200 ms or so, to prevent lag. */
+                var raw = $.scriptcam.getFrameAsBase64();
+                analyzeFrame(raw);
+            } else {
+                drawLoading();
+            }
+        } else {
+            drawIdle();
+        }
+    }
+
+    function onMouseMove(e) {
+        var x = e.layerX;
+        var y = e.layerY;
+        hovering = (x >= size.width/2-100 &&
+                    x <= size.width/2+100 &&
+                    y >= size.height/2-30 &&
+                    y <= size.height/2+60);
+    }
+    function onMouseDown(e) {
+        if (!active)
+            activate();
+    }
+
+    this.onMouseMove = onMouseMove;
+    this.onMouseDown = onMouseDown;
+    this.update = update;
+}
+
 function Cubr() {
     'use strict';
     var scene,
         cube,
         keys,
+        cam,
         mouse = {down: false, last: [0, 0]},
         momentum = {x: 0, y: 0},
         settings = {
@@ -1331,6 +1475,17 @@ function Cubr() {
             startMomentum: {
                 x: 0.55,
                 y: 1.65
+            },
+            webcam: {
+                maxWidth: 320,
+                maxHeight: 240,
+                widthFraction: 0.5,
+                heightFraction: 1.0
+            },
+            glcanvas: {
+                maxWidth: 320,
+                widthFraction: 0.5,
+                heightFraction: 1.0
             },
             shuffleLength: getShuffleLength,
             tutorial: getTutorial,
@@ -1354,6 +1509,7 @@ function Cubr() {
     }
 
     function timerFired() {
+        cam.update();
         cube.update(keys, momentum);
         momentum.x *= settings.inertia;
         momentum.y *= settings.inertia;
@@ -1381,6 +1537,8 @@ function Cubr() {
             e.preventDefault();
             mouse.down = true;
             mouse.last = [e.x, e.y];
+        } else if (e.toElement.id === "webcamcanvas") {
+            cam.onMouseDown();
         }
     }
 
@@ -1396,6 +1554,9 @@ function Cubr() {
                 momentum.y += settings.dragSensitivity * (e.y - mouse.last[1]);
                 mouse.last = [e.x, e.y];
             }
+        }
+        if (e.toElement.id === "webcamcanvas") {
+            cam.onMouseMove(e);
         }
     }
 
@@ -1419,6 +1580,7 @@ function Cubr() {
     function run() {
         scene = new SimpleScene("glcanvas");
         cube = new RubiksCube(scene, settings);
+        cam = new WebcamInterface("webcamcanvas", settings);
         cube.setVersion(3);
         bindEventListeners();
         reset();

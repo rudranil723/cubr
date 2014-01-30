@@ -1,11 +1,11 @@
 body {
-  min-width: 960px;
+  min-width: 700px;
 }
 
 .contain {
   margin-left: auto;
   margin-right: auto;
-  width: 960px;
+  width: 720px;
 }
 
 .tricol,
@@ -18,16 +18,16 @@ body {
 }
 
 .status {
-    width: 940px;
+    width: 700px;
     height: 60px;
 }
 
 .contain .tricol {
-  width: 300px;
+  width: 340px;
 }
 
 .contain .mainart {
-  width: 940px;
+  width: 700px;
 }
 
 canvas {
@@ -50,7 +50,7 @@ rect {
    text-align: center;}
 
 #nav, .status, .article, #header {
-    background-color: #efefef;
+    background-color: #dedede;
     margin-top: 20px;
     padding: 10px 0px 5px 0px;}
 .article {height: 200px;}

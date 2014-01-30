@@ -1008,11 +1008,9 @@ function thirdEdgeLocation(state, topLayer) {
         var rotations = [];
         switch (incorrects.length) {
         case 4:
-            console.log("All four edges dislocated.");
             rotations.push([CLOCKWISE, axis0]);
             break;
         case 3:
-            console.log("Three edges dislocated.");
             var correct_pos = vec.unit(info.withoutTop(corrects[0].cube.ploc.pos));
             /* This will be the axis. Now determine clockwise or countercw */
             var direction;
@@ -1123,14 +1121,12 @@ function thirdEdgeOrientation(state, topLayer) {
         var rotations = [];
         switch (incorrects.length) {
         case 4:
-            console.log("All four edges disoriented.");
             rotations.push([true, axis0]);
             break;
         case 3:
             throw "Three edges disoriented";
             break;
         case 2:
-            console.log("Two edges disoriented.")
             var first_cube = corrects[0];
             var second_cube = corrects[1];
             var first_axis = vec.unit(info.withoutTop(first_cube.cube.ploc.pos));
