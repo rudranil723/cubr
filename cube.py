@@ -160,7 +160,7 @@ rotates to the next face so that your cube will be interpreted accurately.',
         self.status = self.PAUSED
 
         (self.INGAME, self.SHOWINGINFO, self.SHOWINGSTATS) = range(3)
-        self.helpState = self.INGAME
+        self.helpState = self.SHOWINGINFO
         self.statString = ''
         self.helpIndex = 'general'
 
@@ -220,7 +220,7 @@ rotates to the next face so that your cube will be interpreted accurately.',
         width = int(pane.cget('width'))
         height = int(pane.cget('height'))
 
-        r = 16
+        r = 24
 
         #
         # PAUSE
@@ -345,7 +345,7 @@ rotates to the next face so that your cube will be interpreted accurately.',
                                        fill='#0088ff', activefill='#00ffff', 
                                        outline='#ffffff', width=1, activewidth=3)
         pane.tag_bind(solveButton, '<Button-1>', self.solve)
-        pane.create_text(cx, cy, text='Solve', fill='white', state='disabled', font='Arial 10') 
+        pane.create_text(cx, cy, text='Solve', fill='white', state='disabled') 
         pane.tag_bind(solveButton, '<Enter>', lambda e: self.assignHelp('solve'))
         pane.tag_bind(solveButton, '<Leave>', lambda e: self.assignHelp('general'))
 
@@ -358,7 +358,7 @@ rotates to the next face so that your cube will be interpreted accurately.',
                                        outline='#ffffff', width=1, activewidth=3)
         pane.tag_bind(resetButton, '<Button-1>', self.reset)
 
-        pane.create_text(cx, cy, text='Reset', fill='white', state='disabled', font='Arial 10')
+        pane.create_text(cx, cy, text='Reset', fill='white', state='disabled')
         pane.tag_bind(resetButton, '<Enter>', lambda e: self.assignHelp('reset'))
         pane.tag_bind(resetButton, '<Leave>', lambda e: self.assignHelp('general'))
 
@@ -371,8 +371,8 @@ rotates to the next face so that your cube will be interpreted accurately.',
                                        outline='#ffffff', width=1, activewidth=3)
         pane.tag_bind(fromcamButton, '<Button-1>', self.fromCamera)
 
-        pane.create_text(cx, cy-12, text='From', fill='white', state='disabled', font='Arial 9')
-        pane.create_text(cx, cy, text='Camera', fill='white', state='disabled', font='Arial 9')
+        pane.create_text(cx, cy-12, text='From', fill='white', state='disabled')
+        pane.create_text(cx, cy, text='Camera', fill='white', state='disabled')
         pane.tag_bind(fromcamButton, '<Enter>', lambda e: self.assignHelp('fromCamera'))
         pane.tag_bind(fromcamButton, '<Leave>', lambda e: self.assignHelp('general'))
         #
@@ -384,29 +384,29 @@ rotates to the next face so that your cube will be interpreted accurately.',
                                        outline='#ffffff', width=1, activewidth=3)
         pane.tag_bind(guideButton, '<Button-1>', self.guideThrough)
 
-        pane.create_text(cx, cy-12, text='Guide Through', fill='white', state='disabled', font='Arial 8')
-        pane.create_text(cx, cy, text='Solution', fill='white', state='disabled', font='Arial 8')
+        pane.create_text(cx, cy-12, text='Guide Through', fill='white', state='disabled')
+        pane.create_text(cx, cy, text='Solution', fill='white', state='disabled')
         pane.tag_bind(guideButton, '<Enter>', lambda e: self.assignHelp('guide'))
         pane.tag_bind(guideButton, '<Leave>', lambda e: self.assignHelp('general'))
 
         #
         # GUIDE FASTER
         #
-        (cx, cy) = (r * 17, height/2)
-        guideFastButton = pane.create_rectangle(cx - 2*r, cy - r, cx + 2*r, cy + r,
+        (cx, cy) = (r * 17.5, height/2)
+        guideFastButton = pane.create_rectangle(cx - 2.5*r, cy - r, cx + 2.5*r, cy + r,
                                        fill='#0088ff', activefill='#00ffff', 
                                        outline='#ffffff', width=1, activewidth=3)
         pane.tag_bind(guideFastButton, '<Button-1>', self.guideFastThrough)
 
-        pane.create_text(cx, cy-12, text='Guide Through', fill='white', state='disabled', font='Arial 8')
-        pane.create_text(cx, cy, text='Solution (Faster)', fill='white', state='disabled', font='Arial 8')
+        pane.create_text(cx, cy-12, text='Guide Through', fill='white', state='disabled')
+        pane.create_text(cx, cy, text='Solution (Faster)', fill='white', state='disabled')
         pane.tag_bind(guideFastButton, '<Enter>', lambda e: self.assignHelp('guideFast'))
         pane.tag_bind(guideFastButton, '<Leave>', lambda e: self.assignHelp('general'))
 
         #
         # BACK
         #
-        r = 8
+        r = 14
         (cx, cy) = (width/2 - r*7.5, height/2)
         backButton = pane.create_oval(cx - r, cy - r, cx + r, cy + r,
                                        fill='#0088ff', activefill='#00ffff', 
@@ -590,7 +590,7 @@ rotates to the next face so that your cube will be interpreted accurately.',
         self.canvas.delete(ALL)
 
         # Top message
-        self.canvas.create_text(self.camera.width/2, 40, text=self.message, fill='white', font='Arial 13 bold')
+        self.canvas.create_text(self.camera.width/2, 40, text=self.message, fill='white', font='Arial 24 bold')
 
         # Bottom message
         sol = self.sol
@@ -769,7 +769,7 @@ rotates to the next face so that your cube will be interpreted accurately.',
             canvas.create_text(self.width/2, 130, text="Welcome to Cubr!",
                 font='Arial 25 bold')
 
-            canvas.create_text(self.width/2, self.height/2, text=self.helpStrings[self.helpIndex], font ='Arial 8')
+            canvas.create_text(self.width/2, self.height/2, text=self.helpStrings[self.helpIndex])
 
         elif self.helpState == self.SHOWINGSTATS:
             canvas = self.canvas
@@ -783,10 +783,10 @@ rotates to the next face so that your cube will be interpreted accurately.',
                                     fill='#008800', activefill='#00aa00')
             canvas.create_text(self.width/2, self.height-125, text='Back', fill='black', state='disabled')
 
-            canvas.create_rectangle(142, self.height-130, 168, self.height-115, fill='#aaffaa', activefill='#ffffff')
-            canvas.create_text(225, self.height-130, text="These statistics are generated dynamically.\nClick here to reset your data logs.", state='disabled', font = 'Arial 12')
+            canvas.create_rectangle(147, self.height-130, 178, self.height-115, fill='#aaffaa', activefill='#ffffff')
+            canvas.create_text(250, self.height-130, text="These statistics are generated dynamically.\nClick here to reset your data logs.", state='disabled')
 
-            canvas.create_text(self.width/2, self.height/2, text=self.statString, font='Arial 14 bold')
+            canvas.create_text(self.width/2, self.height/2, text=self.statString, font='Arial 24 bold')
 
     def click(self, event):
         if self.helpState == self.SHOWINGINFO or self.helpState == self.SHOWINGSTATS:

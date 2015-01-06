@@ -2,6 +2,7 @@
 # Chris Barker
 # CMU S13 15-112 Term Project
 
+
 from app import App
 import Tkinter
 import screenGrabber
@@ -16,7 +17,7 @@ class Cubr(App):
         ctrlPaneColor = '#222222'
 
         # Canvas for holding buttons
-        self.controlPane = Tkinter.Canvas(self.root, width = self.width,
+        self.controlPane = Tkinter.Canvas(self.root, width = self.width, 
                               height = ctrlPaneHeight, background=ctrlPaneColor)
 
         # Event handlers for window resizing
@@ -61,7 +62,7 @@ class Cubr(App):
 
         # Hand over control to the screenGrabber
         screenGrabber.cubeFromCam(app=self, callback=self.received)
-
+         
     def timerFired(self):
         # cube.timer wrapper -- only calls if we are not in screenGrabber
         if not self.inCam:
@@ -115,7 +116,7 @@ class Cubr(App):
         elif event.keysym in 'rdlufb': self.cube.rotate(event.keysym.upper())
         # command for counterclockwise rotation of a face
         elif event.keysym in 'RDLUFB': self.cube.rotate(event.keysym + "'")
-        else:
+        else: 
             if self.cube.debug:
                 print event.keysym
 

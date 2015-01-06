@@ -109,7 +109,7 @@ def colorByRGB(*args):
     elif green / red > 2:
         return 'green'
 
-    if h > 150 : #or h < 6:
+    if h > 150 or h < 6:
         return 'red'
     elif h < 20 and s < 150:
         return 'white'
