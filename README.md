@@ -3,7 +3,7 @@ cubr
 
 Rubik's Cube Solver -- Uses OpenCV
 
-[Video and Description](http://cbarker.net/blog/projects/applications/cubr)
+[Video Demo](https://www.youtube.com/watch?v=QrLaajSDnTw)
 
 [Live Web Release](http://cbarker.net/cubr)
 
