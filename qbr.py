@@ -8,6 +8,7 @@ import Tkinter
 import screenGrabber
 from cube import Cube
 
+
 class Cubr(App):
 
     def init(self):
@@ -17,8 +18,8 @@ class Cubr(App):
         ctrlPaneColor = '#222222'
 
         # Canvas for holding buttons
-        self.controlPane = Tkinter.Canvas(self.root, width = self.width, 
-                              height = ctrlPaneHeight, background=ctrlPaneColor)
+        self.controlPane = Tkinter.Canvas(self.root, width=self.width,
+                                          height=ctrlPaneHeight, background=ctrlPaneColor)
 
         # Event handlers for window resizing
         self.controlPane.bind('<Configure>', self.controlResize)
@@ -54,7 +55,7 @@ class Cubr(App):
                                      self.width/2 + 200, self.height/2 + 50,
                                      fill='#123456', outline='#abcdef', width=5)
         self.canvas.create_text(self.width/2, self.height/2, fill='#ffffff',
-            font='Arial 36 bold', text='Starting webcam...')
+                                font='Arial 36 bold', text='Starting webcam...')
 
         self.canvas.update()
         self.newCube()
@@ -62,7 +63,7 @@ class Cubr(App):
 
         # Hand over control to the screenGrabber
         screenGrabber.cubeFromCam(app=self, callback=self.received)
-         
+
     def timerFired(self):
         # cube.timer wrapper -- only calls if we are not in screenGrabber
         if not self.inCam:
@@ -107,16 +108,22 @@ class Cubr(App):
                 self.cube.camera.fisheye(+0.8)
                 self.cube.redraw()
 
-        amt = self.cube.amt # Delta value for rotation sensitivity
-        if event.keysym == 'Left': self.cube.direction = (amt, self.cube.direction[1])
-        elif event.keysym == 'Right': self.cube.direction = (-amt, self.cube.direction[1])
-        elif event.keysym == 'Up': self.cube.direction = (self.cube.direction[0], amt)
-        elif event.keysym == 'Down': self.cube.direction = (self.cube.direction[0], -amt)
+        amt = self.cube.amt  # Delta value for rotation sensitivity
+        if event.keysym == 'Left':
+            self.cube.direction = (amt, self.cube.direction[1])
+        elif event.keysym == 'Right':
+            self.cube.direction = (-amt, self.cube.direction[1])
+        elif event.keysym == 'Up':
+            self.cube.direction = (self.cube.direction[0], amt)
+        elif event.keysym == 'Down':
+            self.cube.direction = (self.cube.direction[0], -amt)
         # command for clockwise rotation of a face
-        elif event.keysym in 'rdlufb': self.cube.rotate(event.keysym.upper())
+        elif event.keysym in 'rdlufb':
+            self.cube.rotate(event.keysym.upper())
         # command for counterclockwise rotation of a face
-        elif event.keysym in 'RDLUFB': self.cube.rotate(event.keysym + "'")
-        else: 
+        elif event.keysym in 'RDLUFB':
+            self.cube.rotate(event.keysym + "'")
+        else:
             if self.cube.debug:
                 print event.keysym
 
@@ -124,6 +131,7 @@ class Cubr(App):
         if event.keysym in ['Left', 'Right', 'Down', 'Up']:
             # stopping rotation
             self.cube.direction = (0, 0)
+
 
 if __name__ == '__main__':
     game = Cubr(name="Cubr")
